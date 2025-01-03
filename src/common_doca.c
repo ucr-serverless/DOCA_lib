@@ -40,6 +40,19 @@
 
 DOCA_LOG_REGISTER(COMMON);
 
+void print_buffer_hex(const void *buffer, size_t length) {
+    const unsigned char *byte_buffer = (const unsigned char *)buffer;  // Cast to byte array
+
+    printf("Buffer content (%zu bytes):\n", length);
+    for (size_t i = 0; i < length; i++) {
+        printf("%02x ", byte_buffer[i]);  // Print each byte in hex format
+        if ((i + 1) % 16 == 0) {
+            printf("\n");  // New line after every 16 bytes
+        }
+    }
+    printf("\n\n");
+}
+
 doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, struct doca_dev **retval)
 {
     struct doca_devinfo **dev_list;

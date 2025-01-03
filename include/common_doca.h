@@ -48,6 +48,7 @@ extern "C"
         struct doca_pe *pe;                 /* doca progress engine */
     };
 
+    void print_buffer_hex(const void *buffer, size_t length);
     /*
      * Open a DOCA device according to a given PCI address
      *

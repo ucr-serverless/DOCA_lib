@@ -65,6 +65,7 @@
 #define CLIENT_NAME "Client"
 #define DEFAULT_RDMA_CM_PORT (13579)
 #define MAX_NUM_CONNECTIONS (8)
+#define MAX_RDMA_DESCRIPTOR 1024
 
 /* Function to check if a given device is capable of executing some task */
 typedef doca_error_t (*task_check)(const struct doca_devinfo *);
@@ -80,6 +81,7 @@ struct rdma_config
     char device_name[DOCA_DEVINFO_IBDEV_NAME_SIZE]; /* DOCA device name */
     char send_string[MAX_ARG_SIZE];                 /* String to send */
     char read_string[MAX_ARG_SIZE];                 /* String to read */
+    char sock_ip[MAX_ARG_SIZE];                     /* String to read */
     char write_string[MAX_ARG_SIZE];                /* String to write */
     char local_connection_desc_path[MAX_ARG_SIZE];  /* Path to save the local connection information */
     char remote_connection_desc_path[MAX_ARG_SIZE]; /* Path to read the remote connection information */
@@ -104,6 +106,8 @@ struct rdma_config
     enum doca_rdma_addr_type cm_addr_type; /* RDMA_CM server address type, IPv4, IPv6 or GID,
                                             * Only useful for client
                                             **/
+    int sock_fd;
+    int sock_port;
 };
 
 struct rdma_resources
@@ -155,9 +159,10 @@ struct rdma_resources
                               rdma_task_read/write */
 };
 
-doca_error_t send_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd);
+doca_error_t send_rdma_conn_descriptor(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd);
 
-doca_error_t recv_rdma_conn_descriptor(void **rdma_conn_descriptor, size_t *descriptor_size, int sock_fd);
+doca_error_t recv_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
+                                       int sock_fd);
 /*
  * Allocate DOCA RDMA resources
  *

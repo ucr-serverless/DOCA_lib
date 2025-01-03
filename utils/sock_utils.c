@@ -8,6 +8,22 @@
 #include "log.h"
 #include "sock_utils.h"
 
+int int_to_port_str(int port, char *ret, size_t len)
+{
+    if (!ret)
+    {
+        log_error("port buffer not valid");
+        return -1;
+    }
+    if (len < MAX_PORT_LEN)
+    {
+        log_error("char buffer too small");
+        return -1;
+    }
+    snprintf(ret, MAX_PORT_LEN, "%d", port);
+    return 0;
+}
+
 ssize_t sock_read(int sock_fd, void *buffer, size_t len)
 {
     ssize_t nr, tot_read;
@@ -35,7 +51,7 @@ ssize_t sock_read(int sock_fd, void *buffer, size_t len)
     return tot_read;
 }
 
-ssize_t sock_write(int sock_fd, void *buffer, size_t len)
+ssize_t sock_write(int sock_fd, const void *buffer, size_t len)
 {
     ssize_t nw, tot_written;
     const char *buf = buffer; // avoid pointer arithmetic on void pointer

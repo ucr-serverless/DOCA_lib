@@ -13,6 +13,7 @@ cflags = []
 doca_dep = dependency('doca-common', required: true)
 doca_argp_dep = dependency('doca-argp', required: true)
 doca_rdma_dep = dependency('doca-rdma', required: true)
+zlib_dep = dependency('zlib', required: true)
 
 doca_inc_dir = '/opt/mellanox/doca/include'
 
@@ -71,7 +72,7 @@ foreach prog : bin_programs
     sources: prog[1] + src_files,
     include_directories: inc_dirs + doca_inc,
     c_args: cflags,
-    dependencies: [doca_dep, doca_argp_dep, doca_rdma_dep],
+    dependencies: [doca_dep, doca_argp_dep, doca_rdma_dep, zlib_dep],
     install: true
   )
 endforeach

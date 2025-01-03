@@ -30,7 +30,10 @@
 #include <doca_error.h>
 #include <doca_log.h>
 
+#include "common_doca.h"
 #include "rdma_common_doca.h"
+#include "sock_utils.h"
+#include "log.h"
 
 #define MAX_BUFF_SIZE (256) /* Maximum DOCA buffer size */
 
@@ -184,6 +187,11 @@ static doca_error_t rdma_multi_conn_receive_export_and_connect(struct rdma_resou
     if (resources->cfg->use_rdma_cm == true)
         return rdma_cm_connect(resources);
 
+    resources->remote_rdma_conn_descriptor = malloc(MAX_RDMA_DESCRIPTOR);
+    if (!resources->remote_rdma_conn_descriptor)
+    {
+        return DOCA_ERROR_NO_MEMORY;
+    }
     /* 1-by-1 to setup all the connections */
     for (i = 0; i < resources->cfg->num_connections; i++)
     {
@@ -198,12 +206,26 @@ static doca_error_t rdma_multi_conn_receive_export_and_connect(struct rdma_resou
         }
 
         /* write and read connection details to the sender */
-        result = write_read_connection(resources->cfg, resources, i);
+        /* result = write_read_connection(resources->cfg, resources, i); */
+        result = send_rdma_conn_descriptor(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size,
+                                           resources->cfg->sock_fd);
         if (result != DOCA_SUCCESS)
         {
-            DOCA_LOG_ERR("Failed to write and read connection details from sender: %s", doca_error_get_descr(result));
+            DOCA_LOG_ERR("Failed to send details from sender: %s", doca_error_get_descr(result));
             return result;
         }
+        result = recv_rdma_conn_descriptor(resources->remote_rdma_conn_descriptor,
+                                           &resources->remote_rdma_conn_descriptor_size, MAX_RDMA_DESCRIPTOR,
+                                           resources->cfg->sock_fd);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to recv details from sender: %s", doca_error_get_descr(result));
+            return result;
+        }
+        print_buffer_hex(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size);
+
+        print_buffer_hex(resources->remote_rdma_conn_descriptor, resources->remote_rdma_conn_descriptor_size);
+
 
         /* Connect RDMA */
         result = doca_rdma_connect(resources->rdma, resources->remote_rdma_conn_descriptor,
@@ -389,6 +411,14 @@ doca_error_t rdma_multi_conn_receive(struct rdma_config *cfg)
         DOCA_LOG_ERR("Failed to allocate RDMA Resources: %s", doca_error_get_descr(result));
         return result;
     }
+
+    char port[MAX_PORT_LEN];
+
+    int_to_port_str(cfg->sock_port, port, MAX_PORT_LEN);
+
+    log_info("start connect");
+    cfg->sock_fd = sock_create_connect(cfg->sock_ip, port);
+    log_info("connection established: %d", cfg->sock_fd);
 
     result =
         doca_rdma_task_receive_set_conf(resources.rdma, rdma_multi_conn_receive_completed_callback,

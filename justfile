@@ -8,3 +8,6 @@ build:
     ninja -C build/ -v
 format:
     ninja -C build/ clang-format
+debug:
+    meson setup build --buildtype=debug
+    ninja -C build/

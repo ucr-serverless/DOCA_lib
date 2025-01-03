@@ -23,6 +23,8 @@
  *
  */
 
+#include <netinet/in.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +34,7 @@
 #include <doca_ctx.h>
 #include <doca_error.h>
 #include <doca_log.h>
+#include <zlib.h>
 
 #include "log.h"
 #include "rdma_common_doca.h"
@@ -39,15 +42,19 @@
 
 DOCA_LOG_REGISTER(RDMA::COMMON);
 
-doca_error_t send_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd)
+doca_error_t send_rdma_conn_descriptor(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd)
 {
-    if (sock_write(sock_fd, &descriptor_size, sizeof(size_t)) != sizeof(size_t))
+    if (sock_write(sock_fd, &descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
     {
         log_error("Error, send descriptor size\n");
         goto error;
     }
-
-    if (sock_write(sock_fd, rdma_conn_descriptor, descriptor_size) != descriptor_size)
+    ssize_t write_len = sock_write(sock_fd, rdma_conn_descriptor, descriptor_size);
+    log_info("read: %u, descriptor_size: %u", write_len, descriptor_size);
+    if (write_len < 0) {
+        goto error;
+    }
+    if (write_len != descriptor_size)
     {
         log_error("Error, send descriptor\n");
         goto error;
@@ -60,33 +67,36 @@ error:
     return DOCA_ERROR_IO_FAILED;
 }
 
-doca_error_t recv_rdma_conn_descriptor(void **rdma_conn_descriptor, size_t *descriptor_size, int sock_fd)
+doca_error_t recv_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
+                                       int sock_fd)
 {
-    if (sock_read(sock_fd, descriptor_size, sizeof(size_t)) != sizeof(size_t))
+
+    if (sock_read(sock_fd, descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
     {
         log_error("Error, recv descriptor size\n");
         goto error;
     }
-
-    *rdma_conn_descriptor = malloc(*descriptor_size);
-    if (!(*rdma_conn_descriptor))
+    if (descriptor_buf_size < *descriptor_size)
     {
-        log_error("Error create memory");
-        return DOCA_ERROR_NO_MEMORY;
-    }
-
-    if (sock_read(sock_fd, *rdma_conn_descriptor, *descriptor_size) != *descriptor_size)
-    {
-        log_error("Error, send descriptor\n");
+        log_fatal("receive buffer is smaller then the incoming data");
         goto error;
     }
-
+    ssize_t read_len = sock_read(sock_fd, rdma_conn_descriptor, *descriptor_size);
+    if (read_len < 0) {
+        goto error;
+    }
+    if (read_len != *descriptor_size)
+    {
+        log_error("Error, recv descriptor\n");
+        goto error;
+    }
     return DOCA_SUCCESS;
 
 error:
-    log_error("Error, send descriptor");
+    log_error("Error, recv descriptor");
     return DOCA_ERROR_IO_FAILED;
 }
+
 /*
  * ARGP Callback - Handle IB device name parameter
  *
@@ -262,6 +272,39 @@ static doca_error_t mmap_descriptor_path_callback(void *param, void *config)
     return DOCA_SUCCESS;
 }
 
+static doca_error_t sock_port_param_callback(void *param, void *config)
+{
+    struct rdma_config *rdma_cfg = (struct rdma_config *)config;
+    const int sock_port = *(uint32_t *)param;
+
+    if (sock_port < 0)
+    {
+        DOCA_LOG_ERR("GID index for DOCA RDMA must be non-negative");
+        return DOCA_ERROR_INVALID_VALUE;
+    }
+
+    rdma_cfg->sock_port = (uint32_t)sock_port;
+
+    return DOCA_SUCCESS;
+}
+
+static doca_error_t sock_ip_param_callback(void *param, void *config)
+{
+    struct rdma_config *rdma_cfg = (struct rdma_config *)config;
+    char *sock_ip = (char *)param;
+    int len;
+
+    len = strnlen(sock_ip, MAX_ARG_SIZE);
+    if (len == MAX_ARG_SIZE)
+    {
+        DOCA_LOG_ERR("Entered send string exceeded buffer size: %d", MAX_USER_ARG_SIZE);
+        return DOCA_ERROR_INVALID_VALUE;
+    }
+    /* The string will be '\0' terminated due to the strnlen check above */
+    strncpy(rdma_cfg->sock_ip, sock_ip, len + 1);
+
+    return DOCA_SUCCESS;
+}
 /*
  * ARGP Callback - Handle gid_index parameter
  *
@@ -658,6 +701,8 @@ doca_error_t register_rdma_common_params(void)
     struct doca_argp_param *remote_desc_path_param;
     struct doca_argp_param *remote_resource_desc_path;
     struct doca_argp_param *gid_index_param;
+    struct doca_argp_param *sock_port_param;
+    struct doca_argp_param *sock_ip_param;
     struct doca_argp_param *transport_type_param;
 
     /* Create and register device param */
@@ -766,6 +811,43 @@ doca_error_t register_rdma_common_params(void)
         return result;
     }
 
+    /* Create and register sock port param */
+    result = doca_argp_param_create(&sock_port_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(sock_port_param, "p");
+    doca_argp_param_set_long_name(sock_port_param, "sock port");
+    doca_argp_param_set_description(sock_port_param, "sock port");
+    doca_argp_param_set_callback(sock_port_param, sock_port_param_callback);
+    doca_argp_param_set_type(sock_port_param, DOCA_ARGP_TYPE_INT);
+    result = doca_argp_register_param(sock_port_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    /* Create and register sock ip param */
+    result = doca_argp_param_create(&sock_ip_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(sock_ip_param, "a");
+    doca_argp_param_set_long_name(sock_ip_param, "sock ip");
+    doca_argp_param_set_description(sock_ip_param, "sock ip");
+    doca_argp_param_set_callback(sock_ip_param, sock_ip_param_callback);
+    doca_argp_param_set_type(sock_ip_param, DOCA_ARGP_TYPE_STRING);
+    result = doca_argp_register_param(sock_ip_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
     /* Create and register transport_type param */
     result = doca_argp_param_create(&transport_type_param);
     if (result != DOCA_SUCCESS)
