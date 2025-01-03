@@ -6,3 +6,5 @@ reset_main:
 build:
     meson setup build
     ninja -C build/ -v
+format:
+    ninja -C build/ clang-format

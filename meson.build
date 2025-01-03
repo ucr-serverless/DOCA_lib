@@ -34,9 +34,11 @@ endif
 src_files = files(
   'src/common_doca.c',
   'src/rdma_common_doca.c',
+  'utils/sock_utils.c',
+  'utils/log.c',
 
   )
-inc_dirs = [ 'include' ]
+inc_dirs = [ 'include', 'utils' ]
 doca_inc = [ doca_inc_dir ]
 
 # Programs
