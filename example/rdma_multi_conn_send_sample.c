@@ -29,8 +29,10 @@
 #include <doca_error.h>
 #include <doca_log.h>
 #include <sys/socket.h>
-#include <zlib.h>
+#include <sys/epoll.h>
 
+#include "common_doca.h"
+#include "doca_rdma.h"
 #include "log.h"
 #include "rdma_common_doca.h"
 #include "sock_utils.h"
@@ -39,6 +41,7 @@
 
 DOCA_LOG_REGISTER(RDMA_MULI_CONN_SEND::SAMPLE);
 
+#define EXAMPLE_IMME (0xABCD)
 /*
  * Write the connection details for the receiver to read, and read the connection details of the receiver
  * To differentiate each local and remote connection details, we append the connection_id so the file-name
@@ -90,7 +93,7 @@ static doca_error_t write_read_connection(struct rdma_config *cfg, struct rdma_r
  * @task_user_data [in]: doca_data from the task
  * @ctx_user_data [in]: doca_data from the context
  */
-static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send *rdma_send_task,
+static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send_imm *rdma_send_task,
                                                     union doca_data task_user_data, union doca_data ctx_user_data)
 {
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
@@ -125,7 +128,7 @@ static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send *
  * @task_user_data [in]: doca_data from the task
  * @ctx_user_data [in]: doca_data from the context
  */
-static void rdma_multi_conn_send_error_callback(struct doca_rdma_task_send *rdma_send_task,
+static void rdma_multi_conn_send_error_callback(struct doca_rdma_task_send_imm *rdma_send_task,
                                                 union doca_data task_user_data, union doca_data ctx_user_data)
 {
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
@@ -229,7 +232,7 @@ static doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resource
  */
 static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_resources *resources)
 {
-    struct doca_rdma_task_send *rdma_send_tasks[MAX_NUM_CONNECTIONS] = {0};
+    struct doca_rdma_task_send_imm *rdma_send_tasks[MAX_NUM_CONNECTIONS] = {0};
     union doca_data task_user_data = {0};
     void *src_buf_data;
     struct doca_buf *src_bufs[MAX_NUM_CONNECTIONS] = {0};
@@ -267,8 +270,8 @@ static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_res
         /* Include first_encountered_error in user data of task to be used in the callbacks */
         task_user_data.ptr = &(resources->first_encountered_error);
         /* Allocate and construct RDMA send task */
-        result = doca_rdma_task_send_allocate_init(resources->rdma, resources->connections[i], src_bufs[i],
-                                                   task_user_data, &rdma_send_tasks[i]);
+        result = doca_rdma_task_send_imm_allocate_init(resources->rdma, resources->connections[i], src_bufs[i],
+                                                       EXAMPLE_IMME, task_user_data, &rdma_send_tasks[i]);
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to allocate RDMA send task [%d]: %s", i, doca_error_get_descr(result));
@@ -276,11 +279,11 @@ static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_res
         }
 
         /* Submit RDMA send task */
-        DOCA_LOG_INFO(
-            "Submitting RDMA send task [%d] that sends \"%s\" to receiver, sender's rdma_connection address [%p]", i,
-            resources->cfg->send_string, resources->connections[i]);
+        DOCA_LOG_INFO("Submitting RDMA send task [%d] that sends \"%s\" to receiver with imm value %d, sender's "
+                      "rdma_connection address [%p]",
+                      i, resources->cfg->send_string, EXAMPLE_IMME, resources->connections[i]);
         resources->num_remaining_tasks++;
-        result = doca_task_submit(doca_rdma_task_send_as_task(rdma_send_tasks[i]));
+        result = doca_task_submit(doca_rdma_task_send_imm_as_task(rdma_send_tasks[i]));
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to submit RDMA send task [%d]: %s", i, doca_error_get_descr(result));
@@ -291,7 +294,7 @@ static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_res
     return result;
 
 free_task:
-    doca_task_free(doca_rdma_task_send_as_task(rdma_send_tasks[i]));
+    doca_task_free(doca_rdma_task_send_imm_as_task(rdma_send_tasks[i]));
 destroy_src_buf:
     tmp_result = doca_buf_dec_refcount(src_bufs[i], NULL);
     if (tmp_result != DOCA_SUCCESS)
@@ -375,6 +378,9 @@ static void rdma_multi_conn_send_state_change_callback(const union doca_data use
     }
 }
 
+bool wait_condition(void* arg) {
+    return ((struct rdma_resources*)arg)->run_pe_progress;
+}
 /*
  * Send a message to the receiver
  *
@@ -418,9 +424,11 @@ doca_error_t rdma_multi_conn_send(struct rdma_config *cfg)
     listen(fd, 5);
     cfg->sock_fd = accept(fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
     log_info("received connection: %d", cfg->sock_fd);
+    // the config of send and send imm is different
 
-    result = doca_rdma_task_send_set_conf(resources.rdma, rdma_multi_conn_send_completed_callback,
-                                          rdma_multi_conn_send_error_callback, NUM_RDMA_TASKS * cfg->num_connections);
+    result =
+        doca_rdma_task_send_imm_set_conf(resources.rdma, rdma_multi_conn_send_completed_callback,
+                                         rdma_multi_conn_send_error_callback, NUM_RDMA_TASKS * cfg->num_connections);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set configurations for RDMA send task: %s", doca_error_get_descr(result));
@@ -488,12 +496,23 @@ doca_error_t rdma_multi_conn_send(struct rdma_config *cfg)
      * When the context moves to idle, the context change callback call will signal to stop running the progress
      * engine.
      */
-    while (resources.run_pe_progress)
-    {
-        if (doca_pe_progress(resources.pe) == 0)
-            nanosleep(&ts, &ts);
-    }
 
+	int ep_fd = epoll_create1(0);
+	JUMP_ON_FAILURE_CONDITION((ep_fd == -1), error);
+
+    result = register_pe_event(resources.pe, ep_fd);
+    JUMP_ON_FAILURE(result, error);
+
+    result = run_for_competion(resources.pe, ep_fd, wait_condition, (void*)&resources);
+    JUMP_ON_FAILURE(result, error);
+    
+    /* while (resources.run_pe_progress) */
+    /* { */
+    /*     if (doca_pe_progress(resources.pe) == 0) */
+    /*         nanosleep(&ts, &ts); */
+    /* } */
+
+error:
     /* Assign the result we update in the callbacks */
     result = resources.first_encountered_error;
     close(cfg->sock_fd);

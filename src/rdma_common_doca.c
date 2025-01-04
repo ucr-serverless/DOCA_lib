@@ -34,7 +34,6 @@
 #include <doca_ctx.h>
 #include <doca_error.h>
 #include <doca_log.h>
-#include <zlib.h>
 
 #include "log.h"
 #include "rdma_common_doca.h"
@@ -51,7 +50,8 @@ doca_error_t send_rdma_conn_descriptor(const void *rdma_conn_descriptor, size_t 
     }
     ssize_t write_len = sock_write(sock_fd, rdma_conn_descriptor, descriptor_size);
     log_info("read: %u, descriptor_size: %u", write_len, descriptor_size);
-    if (write_len < 0) {
+    if (write_len < 0)
+    {
         goto error;
     }
     if (write_len != descriptor_size)
@@ -82,7 +82,8 @@ doca_error_t recv_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t *descr
         goto error;
     }
     ssize_t read_len = sock_read(sock_fd, rdma_conn_descriptor, *descriptor_size);
-    if (read_len < 0) {
+    if (read_len < 0)
+    {
         goto error;
     }
     if (read_len != *descriptor_size)

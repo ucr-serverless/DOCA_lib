@@ -23,6 +23,7 @@
  *
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,19 +36,24 @@
 #include <doca_log.h>
 #include <doca_mmap.h>
 #include <doca_pe.h>
+#include <errno.h>
+#include <sys/epoll.h>
 
 #include "common_doca.h"
 
 DOCA_LOG_REGISTER(COMMON);
 
-void print_buffer_hex(const void *buffer, size_t length) {
-    const unsigned char *byte_buffer = (const unsigned char *)buffer;  // Cast to byte array
+void print_buffer_hex(const void *buffer, size_t length)
+{
+    const unsigned char *byte_buffer = (const unsigned char *)buffer; // Cast to byte array
 
     printf("Buffer content (%zu bytes):\n", length);
-    for (size_t i = 0; i < length; i++) {
-        printf("%02x ", byte_buffer[i]);  // Print each byte in hex format
-        if ((i + 1) % 16 == 0) {
-            printf("\n");  // New line after every 16 bytes
+    for (size_t i = 0; i < length; i++)
+    {
+        printf("%02x ", byte_buffer[i]); // Print each byte in hex format
+        if ((i + 1) % 16 == 0)
+        {
+            printf("\n"); // New line after every 16 bytes
         }
     }
     printf("\n\n");
@@ -98,6 +104,50 @@ doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, s
     return res;
 }
 
+doca_error_t register_pe_event(struct doca_pe *pe, int ep_fd)
+{
+    doca_event_handle_t event_handle = doca_event_invalid_handle;
+    struct epoll_event events_in = {.events = EPOLLIN, .data.fd = 0};
+
+    DOCA_LOG_INFO("Registering PE event");
+
+    /* doca_event_handle_t is a file descriptor that can be added to an epoll */
+    doca_error_t ret = doca_pe_get_notification_handle(pe, &event_handle);
+    if (ret != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("get event handle fail");
+    }
+
+    if (epoll_ctl(ep_fd, EPOLL_CTL_ADD, event_handle, &events_in) != 0)
+    {
+        DOCA_LOG_ERR("Failed to register epoll, error=%d", errno);
+        return DOCA_ERROR_OPERATING_SYSTEM;
+    }
+
+    return DOCA_SUCCESS;
+}
+
+doca_error_t run_for_competion(struct doca_pe *pe, int ep_fd, predicate func, void *func_args)
+{
+    struct epoll_event ep_event = {0};
+    int ret = 0;
+    DOCA_LOG_INFO("epoll event loop");
+    while (func(func_args))
+    {
+        EXIT_ON_FAILURE(doca_pe_request_notification(pe));
+        ret = epoll_wait(ep_fd, &ep_event, 1, -1);
+        if (ret == -1)
+        {
+            DOCA_LOG_ERR("failed to wait ep event, error = %d", errno);
+            return DOCA_ERROR_OPERATING_SYSTEM;
+        }
+        EXIT_ON_FAILURE(doca_pe_clear_notification(pe, 0));
+        while (doca_pe_progress(pe))
+        {
+        }
+    }
+    return DOCA_SUCCESS;
+}
 doca_error_t open_doca_device_with_ibdev_name(const uint8_t *value, size_t val_size, tasks_check func,
                                               struct doca_dev **retval)
 {

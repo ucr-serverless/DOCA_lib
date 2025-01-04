@@ -31,9 +31,10 @@
 #include <doca_log.h>
 
 #include "common_doca.h"
+#include "doca_types.h"
+#include "log.h"
 #include "rdma_common_doca.h"
 #include "sock_utils.h"
-#include "log.h"
 
 #define MAX_BUFF_SIZE (256) /* Maximum DOCA buffer size */
 
@@ -98,6 +99,7 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
     doca_error_t result = DOCA_SUCCESS, tmp_result;
     const struct doca_rdma_connection *rdma_connection;
     struct doca_buf *dst_buf = NULL;
+    doca_be32_t imme;
 
     DOCA_LOG_INFO("RDMA receive task was done successfully");
 
@@ -110,6 +112,10 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
         DOCA_LOG_ERR("Failed to get destination buffer data: %s", doca_error_get_descr(result));
         goto free_task;
     }
+
+    imme = doca_rdma_task_receive_get_result_immediate_data(rdma_receive_task);
+
+    DOCA_LOG_INFO("the imme received is %d", imme);
 
     /* Check if dst_buf_data is null terminated and of legal size */
     if (strnlen(dst_buf_data, MAX_BUFF_SIZE) == MAX_BUFF_SIZE)
@@ -225,7 +231,6 @@ static doca_error_t rdma_multi_conn_receive_export_and_connect(struct rdma_resou
         print_buffer_hex(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size);
 
         print_buffer_hex(resources->remote_rdma_conn_descriptor, resources->remote_rdma_conn_descriptor_size);
-
 
         /* Connect RDMA */
         result = doca_rdma_connect(resources->rdma, resources->remote_rdma_conn_descriptor,
@@ -385,6 +390,9 @@ static void rdma_multi_conn_receive_state_change_callback(const union doca_data 
     }
 }
 
+bool wait_condition(void* arg) {
+    return ((struct rdma_resources*)arg)->run_pe_progress;
+}
 /*
  * Receive a message from the sender
  *
@@ -490,14 +498,25 @@ doca_error_t rdma_multi_conn_receive(struct rdma_config *cfg)
      * When the context moves to idle, the context change callback call will signal to stop running the progress
      * engine.
      */
-    while (resources.run_pe_progress)
-    {
-        if (doca_pe_progress(resources.pe) == 0)
-            nanosleep(&ts, &ts);
-    }
+	int ep_fd = epoll_create1(0);
+	JUMP_ON_FAILURE_CONDITION((ep_fd == -1), error);
+
+    result = register_pe_event(resources.pe, ep_fd);
+    JUMP_ON_FAILURE(result, error);
+
+    result = run_for_competion(resources.pe, ep_fd, wait_condition, (void*)&resources);
+    JUMP_ON_FAILURE(result, error);
+    /* while (resources.run_pe_progress) */
+    /* { */
+    /*     if (doca_pe_progress(resources.pe) == 0) */
+    /*         nanosleep(&ts, &ts); */
+    /* } */
 
     /* Assign the result we update in the callbacks */
+
+error:
     result = resources.first_encountered_error;
+    close(cfg->sock_fd);
 
 stop_buf_inventory:
     tmp_result = doca_buf_inventory_stop(resources.buf_inventory);

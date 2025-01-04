@@ -28,14 +28,47 @@
 
 #include <doca_dev.h>
 #include <doca_error.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
+#define EXIT_ON_FAILURE(_expression_)                                                                                  \
+    {                                                                                                                  \
+        doca_error_t _status_ = _expression_;                                                                          \
+                                                                                                                       \
+        if (_status_ != DOCA_SUCCESS)                                                                                  \
+        {                                                                                                              \
+            DOCA_LOG_ERR("%s failed with status %s", __func__, doca_error_get_descr(_status_));                        \
+            return _status_;                                                                                           \
+        }                                                                                                              \
+    }
+
+#define JUMP_ON_FAILURE(_expression_, _label)                                                                                  \
+    {                                                                                                                  \
+        doca_error_t _status_ = _expression_;                                                                          \
+                                                                                                                       \
+        if (_status_ != DOCA_SUCCESS)                                                                                  \
+        {                                                                                                              \
+            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_expression_, doca_error_get_descr(_status_));                        \
+            goto _label;\
+        }                                                                                                              \
+    }
+#define JUMP_ON_FAILURE_CONDITION(_status_, _label)                                                                                  \
+    {                                                                                                                  \
+                                                                                                                       \
+        if (_status_)                                                                                  \
+        {                                                                                                              \
+            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_status_,  doca_error_get_descr(_status_));                        \
+            goto _label;\
+        }                                                                                                              \
+    }
     /* Function to check if a given device is capable of executing some task */
     typedef doca_error_t (*tasks_check)(struct doca_devinfo *);
+
+    typedef bool (*predicate)(void *);
 
     /* DOCA core objects used by the samples / applications */
     struct program_core_objects
@@ -50,10 +83,30 @@ extern "C"
 
     void print_buffer_hex(const void *buffer, size_t length);
     /*
+     * register the pe fd to the ep_fd
+     *
+     * @pe [in]: PCI address
+     * @ep_fd [in]: pointer to a function that checks if the device have some task capabilities (Ignored if set to NULL)
+     * @return: DOCA_SUCCESS on success
+     */
+    doca_error_t register_pe_event(struct doca_pe *pe, int ep_fd);
+
+    /*
+     * wait on the epoll fd and process the pe when the predicate returns true
+     *
+     * @pe [in]: the doca_pe
+     * @ep_fd [in]: the epoll fd
+     * @predicate [in]: the function pointer of the predicate
+     * @func_args [in]: the arguments pointer
+     * @return: DOCA_SUCCESS on success
+     */
+    doca_error_t run_for_competion(struct doca_pe *pe, int ep_fd, predicate func, void *func_args);
+    /*
      * Open a DOCA device according to a given PCI address
      *
      * @pci_addr [in]: PCI address
-     * @func [in]: pointer to a function that checks if the device have some task capabilities (Ignored if set to NULL)
+     * @func [in]: pointer to a function that checks if the device have some task capabilities (Ignored if set to
+     * NULL)
      * @retval [out]: pointer to doca_dev struct, NULL if not found
      * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
      */
@@ -64,7 +117,8 @@ extern "C"
      *
      * @value [in]: IB device name
      * @val_size [in]: input length, in bytes
-     * @func [in]: pointer to a function that checks if the device have some task capabilities (Ignored if set to NULL)
+     * @func [in]: pointer to a function that checks if the device have some task capabilities (Ignored if set to
+     * NULL)
      * @retval [out]: pointer to doca_dev struct, NULL if not found
      * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
      */
@@ -76,7 +130,8 @@ extern "C"
      *
      * @value [in]: interface name
      * @val_size [in]: input length, in bytes
-     * @func [in]: pointer to a function that checks if the device have some task capabilities (Ignored if set to NULL)
+     * @func [in]: pointer to a function that checks if the device have some task capabilities (Ignored if set to
+     * NULL)
      * @retval [out]: pointer to doca_dev struct, NULL if not found
      * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
      */
