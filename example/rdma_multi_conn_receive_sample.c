@@ -390,8 +390,9 @@ static void rdma_multi_conn_receive_state_change_callback(const union doca_data 
     }
 }
 
-bool wait_condition(void* arg) {
-    return ((struct rdma_resources*)arg)->run_pe_progress;
+bool wait_condition(void *arg)
+{
+    return ((struct rdma_resources *)arg)->run_pe_progress;
 }
 /*
  * Receive a message from the sender
@@ -498,13 +499,13 @@ doca_error_t rdma_multi_conn_receive(struct rdma_config *cfg)
      * When the context moves to idle, the context change callback call will signal to stop running the progress
      * engine.
      */
-	int ep_fd = epoll_create1(0);
-	JUMP_ON_FAILURE_CONDITION((ep_fd == -1), error);
+    int ep_fd = epoll_create1(0);
+    JUMP_ON_FAILURE_CONDITION((ep_fd == -1), error);
 
     result = register_pe_event(resources.pe, ep_fd);
     JUMP_ON_FAILURE(result, error);
 
-    result = run_for_competion(resources.pe, ep_fd, wait_condition, (void*)&resources);
+    result = run_for_competion(resources.pe, ep_fd, wait_condition, (void *)&resources);
     JUMP_ON_FAILURE(result, error);
     /* while (resources.run_pe_progress) */
     /* { */

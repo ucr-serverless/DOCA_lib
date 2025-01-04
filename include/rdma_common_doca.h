@@ -67,8 +67,6 @@
 #define MAX_NUM_CONNECTIONS (8)
 #define MAX_RDMA_DESCRIPTOR 1024
 
-/* Function to check if a given device is capable of executing some task */
-typedef doca_error_t (*task_check)(const struct doca_devinfo *);
 
 /* Forward declaration */
 struct rdma_resources;
@@ -112,11 +110,12 @@ struct rdma_config
 
 struct rdma_resources
 {
-    struct rdma_config *cfg;                      /* RDMA samples configuration parameters */
-    struct doca_dev *doca_device;                 /* DOCA device */
-    struct doca_pe *pe;                           /* DOCA progress engine */
-    struct doca_mmap *mmap;                       /* DOCA memory map */
-    struct doca_mmap *remote_mmap;                /* DOCA remote memory map */
+    struct rdma_config *cfg;       /* RDMA samples configuration parameters */
+    struct doca_dev *doca_device;  /* DOCA device */
+    struct doca_pe *pe;            /* DOCA progress engine */
+    struct doca_mmap *mmap;        /* DOCA memory map */
+    struct doca_mmap *remote_mmap; /* DOCA remote memory map */
+    struct doca_mmap *host_mmap;
     struct doca_sync_event *sync_event;           /* DOCA sync event */
     struct doca_sync_event_remote_net *remote_se; /* DOCA remote sync event */
     char *mmap_memrange;                          /* DOCA remote memory map memory range */
@@ -174,7 +173,7 @@ doca_error_t recv_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t *descr
  * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
  */
 doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mmap_permissions,
-                                     const uint32_t rdma_permissions, task_check func,
+                                     const uint32_t rdma_permissions, tasks_check func,
                                      struct rdma_resources *resources);
 
 /*

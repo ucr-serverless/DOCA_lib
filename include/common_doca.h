@@ -46,27 +46,27 @@ extern "C"
         }                                                                                                              \
     }
 
-#define JUMP_ON_FAILURE(_expression_, _label)                                                                                  \
+#define JUMP_ON_FAILURE(_expression_, _label)                                                                          \
     {                                                                                                                  \
         doca_error_t _status_ = _expression_;                                                                          \
                                                                                                                        \
         if (_status_ != DOCA_SUCCESS)                                                                                  \
         {                                                                                                              \
-            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_expression_, doca_error_get_descr(_status_));                        \
-            goto _label;\
+            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_expression_, doca_error_get_descr(_status_));     \
+            goto _label;                                                                                               \
         }                                                                                                              \
     }
-#define JUMP_ON_FAILURE_CONDITION(_status_, _label)                                                                                  \
+#define JUMP_ON_FAILURE_CONDITION(_status_, _label)                                                                    \
     {                                                                                                                  \
                                                                                                                        \
-        if (_status_)                                                                                  \
+        if (_status_)                                                                                                  \
         {                                                                                                              \
-            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_status_,  doca_error_get_descr(_status_));                        \
-            goto _label;\
+            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_status_, doca_error_get_descr(_status_));         \
+            goto _label;                                                                                               \
         }                                                                                                              \
     }
     /* Function to check if a given device is capable of executing some task */
-    typedef doca_error_t (*tasks_check)(struct doca_devinfo *);
+    typedef doca_error_t (*tasks_check)(const struct doca_devinfo *);
 
     typedef bool (*predicate)(void *);
 
@@ -80,6 +80,24 @@ extern "C"
         struct doca_ctx *ctx;               /* doca context */
         struct doca_pe *pe;                 /* doca progress engine */
     };
+
+    /*
+     * check and print the device capabilities
+     *
+     * @devinfo [in]: DOCA devinfo
+     */
+    void check_dev_cap(const struct doca_devinfo *devinfo);
+    /*
+     * Allocate memory and populate it into the memory map
+     *
+     * @mmap [in]: DOCA memory map
+     * @buffer_len [in]: Allocated buffer length
+     * @access_flags [in]: The access permissions of the mmap
+     * @buffer [out]: Allocated buffer
+     * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
+     */
+    doca_error_t memory_alloc_and_populate(struct doca_mmap *mmap, size_t buffer_len, uint32_t access_flags,
+                                           char **buffer);
 
     void print_buffer_hex(const void *buffer, size_t length);
     /*
@@ -111,6 +129,17 @@ extern "C"
      * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
      */
     doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, struct doca_dev **retval);
+
+    /*
+     * Open a DOCA device according to a given IB device name char*
+     *
+     * @device_name [in]: IB device name
+     * @func [in]: pointer to a function that checks if the device have some task capabilities (Ignored if set to
+     * NULL)
+     * @retval [out]: pointer to doca_dev struct, NULL if not found
+     * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
+     */
+    doca_error_t open_doca_device_with_ibdev_str(const char *device_name, tasks_check func, struct doca_dev **doca_device);
 
     /*
      * Open a DOCA device according to a given IB device name

@@ -38,10 +38,115 @@
 #include <doca_pe.h>
 #include <errno.h>
 #include <sys/epoll.h>
+#include <doca_rdma.h>
+#include <doca_dma.h>
 
 #include "common_doca.h"
 
 DOCA_LOG_REGISTER(COMMON);
+
+void check_dev_cap(const struct doca_devinfo *devinfo)
+{
+    doca_error_t result;
+
+    uint8_t ret;
+    result = doca_mmap_cap_is_create_from_export_pci_supported(devinfo, &ret);
+    DOCA_LOG_INFO("start check");
+    if (result != DOCA_SUCCESS) {
+        DOCA_LOG_ERR("mmap query fail");
+    }
+    if (ret == 1) {
+        DOCA_LOG_INFO("device support create mmap");
+    }
+    result = doca_rdma_cap_task_receive_is_supported(devinfo);
+    if (result != DOCA_SUCCESS) {
+        DOCA_LOG_ERR("rdma_receive not supportted");
+    }
+    else {
+        DOCA_LOG_INFO("rdma receive supportted");
+    }
+    result = doca_rdma_cap_task_send_is_supported(devinfo);
+    if (result != DOCA_SUCCESS) {
+        DOCA_LOG_ERR("rdma send not supportted");
+    }
+    else {
+        DOCA_LOG_INFO("rdma send supportted");
+    }
+    result = doca_dma_cap_task_memcpy_is_supported(devinfo);
+    if (result != DOCA_SUCCESS) {
+        DOCA_LOG_ERR("dma memcpy is not supportted");
+    }
+    else {
+        DOCA_LOG_ERR("dma memcpy supportted");
+    }
+    uint8_t ip_addr[DOCA_DEVINFO_IPV4_ADDR_SIZE] = {0};
+    result = doca_devinfo_get_ipv4_addr(devinfo, ip_addr, DOCA_DEVINFO_IPV4_ADDR_SIZE);
+    if (result != DOCA_SUCCESS) {
+        DOCA_LOG_ERR("ipv4 addr is not found");
+    }
+    else {
+            DOCA_LOG_INFO("IPv4 Address: %u.%u.%u.%u\n",
+           ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
+    }
+
+    uint8_t mac_addr[DOCA_DEVINFO_MAC_ADDR_SIZE];
+    result = doca_devinfo_get_mac_addr(devinfo, mac_addr, DOCA_DEVINFO_MAC_ADDR_SIZE);
+    if (result != DOCA_SUCCESS) {
+        DOCA_LOG_ERR("mac addr is not found");
+    }
+    else {
+            DOCA_LOG_INFO("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+           mac_addr[0], mac_addr[1], mac_addr[2],
+           mac_addr[3], mac_addr[4], mac_addr[5]);
+    }
+    DOCA_LOG_INFO("end check");
+
+}
+/*
+ * Allocate memory and populate it into the memory map
+ *
+ * @mmap [in]: DOCA memory map
+ * @buffer_len [in]: Allocated buffer length
+ * @access_flags [in]: The access permissions of the mmap
+ * @buffer [out]: Allocated buffer
+ * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
+ */
+doca_error_t memory_alloc_and_populate(struct doca_mmap *mmap, size_t buffer_len, uint32_t access_flags,
+                                              char **buffer)
+{
+    doca_error_t result;
+
+    result = doca_mmap_set_permissions(mmap, access_flags);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set access permissions of memory map: %s", doca_error_get_descr(result));
+        return result;
+    }
+    *buffer = (char *)malloc(buffer_len);
+    if (*buffer == NULL)
+    {
+        DOCA_LOG_ERR("Failed to allocate memory for source buffer");
+        return DOCA_ERROR_NO_MEMORY;
+    }
+
+    result = doca_mmap_set_memrange(mmap, *buffer, buffer_len);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set memrange of memory map: %s", doca_error_get_descr(result));
+        free(*buffer);
+        return result;
+    }
+
+    /* Populate local buffer into memory map to allow access from DPU side after exporting */
+    result = doca_mmap_start(mmap);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to populate memory map: %s", doca_error_get_descr(result));
+        free(*buffer);
+    }
+
+    return result;
+}
 
 void print_buffer_hex(const void *buffer, size_t length)
 {
@@ -148,6 +253,61 @@ doca_error_t run_for_competion(struct doca_pe *pe, int ep_fd, predicate func, vo
     }
     return DOCA_SUCCESS;
 }
+
+/*
+ * Open DOCA device
+ *
+ * @device_name [in]: The name of the wanted IB device (could be empty string)
+ * @func [in]: Function to check if a given device is capable of executing some task
+ * @doca_device [out]: An allocated DOCA device on success and NULL otherwise
+ * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
+ */
+doca_error_t open_doca_device_with_ibdev_str(const char *device_name, tasks_check func, struct doca_dev **doca_device)
+{
+    struct doca_devinfo **dev_list;
+    uint32_t nb_devs = 0;
+    doca_error_t result;
+    char ibdev_name[DOCA_DEVINFO_IBDEV_NAME_SIZE] = {0};
+    uint32_t i = 0;
+
+    result = doca_devinfo_create_list(&dev_list, &nb_devs);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to load DOCA devices list: %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    /* Search device with same dev name*/
+    for (i = 0; i < nb_devs; i++)
+    {
+        result = doca_devinfo_get_ibdev_name(dev_list[i], ibdev_name, sizeof(ibdev_name));
+        if (result != DOCA_SUCCESS ||
+            (strlen(device_name) != 0 && strncmp(device_name, ibdev_name, DOCA_DEVINFO_IBDEV_NAME_SIZE) != 0))
+            continue;
+        /* If any special capabilities are needed */
+        if (func != NULL && func(dev_list[i]) != DOCA_SUCCESS)
+            continue;
+        result = doca_dev_open(dev_list[i], doca_device);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to open DOCA device: %s", doca_error_get_descr(result));
+            goto out;
+        }
+        break;
+    }
+
+out:
+    doca_devinfo_destroy_list(dev_list);
+
+    if (*doca_device == NULL)
+    {
+        DOCA_LOG_ERR("Couldn't get DOCA device");
+        return DOCA_ERROR_NOT_FOUND;
+    }
+
+    return result;
+}
+
 doca_error_t open_doca_device_with_ibdev_name(const uint8_t *value, size_t val_size, tasks_check func,
                                               struct doca_dev **retval)
 {

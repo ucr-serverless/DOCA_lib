@@ -28,8 +28,8 @@
 #include <doca_ctx.h>
 #include <doca_error.h>
 #include <doca_log.h>
-#include <sys/socket.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 
 #include "common_doca.h"
 #include "doca_rdma.h"
@@ -378,8 +378,9 @@ static void rdma_multi_conn_send_state_change_callback(const union doca_data use
     }
 }
 
-bool wait_condition(void* arg) {
-    return ((struct rdma_resources*)arg)->run_pe_progress;
+bool wait_condition(void *arg)
+{
+    return ((struct rdma_resources *)arg)->run_pe_progress;
 }
 /*
  * Send a message to the receiver
@@ -497,15 +498,15 @@ doca_error_t rdma_multi_conn_send(struct rdma_config *cfg)
      * engine.
      */
 
-	int ep_fd = epoll_create1(0);
-	JUMP_ON_FAILURE_CONDITION((ep_fd == -1), error);
+    int ep_fd = epoll_create1(0);
+    JUMP_ON_FAILURE_CONDITION((ep_fd == -1), error);
 
     result = register_pe_event(resources.pe, ep_fd);
     JUMP_ON_FAILURE(result, error);
 
-    result = run_for_competion(resources.pe, ep_fd, wait_condition, (void*)&resources);
+    result = run_for_competion(resources.pe, ep_fd, wait_condition, (void *)&resources);
     JUMP_ON_FAILURE(result, error);
-    
+
     /* while (resources.run_pe_progress) */
     /* { */
     /*     if (doca_pe_progress(resources.pe) == 0) */
