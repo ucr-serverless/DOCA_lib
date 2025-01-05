@@ -248,9 +248,9 @@ error:
     log_error("Error, send descriptor");
     return DOCA_ERROR_IO_FAILED;
 }
-doca_error_t sock_recv_ptr(void **ptr, int sock_fd)
+doca_error_t sock_recv_ptr(uint64_t *ptr, int sock_fd)
 {
-    if (sock_read(sock_fd, *ptr, sizeof(uint64_t)) != sizeof(uint64_t))
+    if (sock_read(sock_fd, ptr, sizeof(uint64_t)) != sizeof(uint64_t))
     {
         log_error("Error, recv ptr size\n");
         return DOCA_ERROR_IO_FAILED;

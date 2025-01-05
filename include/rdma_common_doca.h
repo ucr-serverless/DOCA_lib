@@ -120,7 +120,7 @@ struct rdma_config
     bool is_host_export;
     void *host_descriptor;
     size_t host_descriptor_size;
-    void *host_buf;
+    uint64_t host_buf_addr;
     struct doca_mmap *host_mmap;
 };
 
