@@ -146,7 +146,7 @@ int main(int argc, char **argv)
     print_buffer_hex(cfg.host_descriptor, cfg.host_descriptor_size);
 
     DOCA_LOG_INFO("received ptr addr: %p", (void*)cfg.host_buf_addr);
-    DOCA_LOG_INFO("received ptr range: %u", cfg.host_buf_range);
+    DOCA_LOG_INFO("received ptr range: %lu", cfg.host_buf_range);
 
     close(fd);
     close(cfg.sock_fd);

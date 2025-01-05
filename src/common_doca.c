@@ -227,10 +227,10 @@ doca_error_t sock_send_range(uint64_t range, int sock_fd)
 {
     if (sock_write(sock_fd, &range, sizeof(uint64_t)) != sizeof(uint64_t))
     {
-        log_error("Error, send ptr size\n");
+        log_error("Error, send range\n");
         return DOCA_ERROR_IO_FAILED;
     }
-    log_info("send ptr addr: %p", range);
+    log_info("send range: %lu", range);
     return DOCA_SUCCESS;
 }
 doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, uint32_t descriptor_size, int sock_fd)
