@@ -913,6 +913,7 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     if (cfg->is_host_export && (cfg->host_descriptor != NULL))
     {
 
+        DOCA_LOG_INFO("import from host");
         result = doca_mmap_create_from_export(NULL, (const void *)cfg->host_descriptor, cfg->host_descriptor_size,
                                               resources->doca_device, &cfg->host_mmap);
 
@@ -1824,6 +1825,10 @@ doca_error_t set_default_config_value(struct rdma_config *cfg)
     cfg->cm_port = DEFAULT_RDMA_CM_PORT;
     cfg->cm_addr_type = DOCA_RDMA_ADDR_TYPE_IPv4;
     memset(cfg->cm_addr, 0, SERVER_ADDR_LEN);
+    cfg->is_host_export = false;
+    cfg->host_descriptor = NULL;
+    cfg->host_descriptor_size = 0;
+    cfg->host_mmap = NULL;
 
     return DOCA_SUCCESS;
 }
