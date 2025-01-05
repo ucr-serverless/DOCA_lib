@@ -5,21 +5,30 @@
 
 #include "doca_error.h"
 #include "doca_rdma.h"
+#include "log.h"
 #include "rdma_common_doca.h"
 #include "common_doca.h"
+#include "sock_utils.h"
 
 DOCA_LOG_REGISTER(HOST_EXPORT_MAIN::MAIN);
 
+#define BUF_SZ 4096
+#define MAX_EXPT_BUF_SZ 1024
 struct host_resources
                {
     struct rdma_config *cfg;
     struct doca_dev *doca_device;  /* DOCA device */
     struct doca_pe *pe;            /* DOCA progress engine */
-    struct doca_mmap *mmap;        /* DOCA memory map */
+    struct doca_mmap *buf_mmap;        /* DOCA memory map */
+    size_t buf_sz;
+    char* buf;
+    uint8_t export_descriptor[MAX_EXPT_BUF_SZ];
+    size_t export_descriptor_size;
+
 
 };
 
-doca_error_t allocate_dma_copy_resources(struct host_resources *resources, struct rdma_config *cfg)
+doca_error_t allocate_rdma_copy_resources(struct host_resources *resources, struct rdma_config *cfg)
 {
     doca_error_t result;
 
@@ -32,6 +41,17 @@ doca_error_t allocate_dma_copy_resources(struct host_resources *resources, struc
         return result;
     }
 
+    resources->buf_sz = BUF_SZ;
+
+    result = memory_alloc_and_populate(resources->buf_mmap,
+                       resources->buf_sz,
+                       DOCA_ACCESS_FLAG_PCI_READ_WRITE,
+                       &resources->buf);
+    if (result != DOCA_SUCCESS) {
+        DOCA_LOG_ERR("Failed to allocate recv buffer: %s", doca_error_get_descr(result));
+        return DOCA_ERROR_NO_MEMORY;
+    }
+    DOCA_LOG_INFO("The content of the buffer is %.4096s", resources->buf);
 
 
 
@@ -41,6 +61,7 @@ doca_error_t allocate_dma_copy_resources(struct host_resources *resources, struc
 int main(int argc, char **argv)
 {
     struct rdma_config cfg;
+    struct host_resources resources = {0};
     doca_error_t result;
     struct doca_log_backend *sdk_log;
     int exit_status = EXIT_FAILURE;
@@ -84,13 +105,6 @@ int main(int argc, char **argv)
         goto argp_cleanup;
     }
 
-    /* Register RDMA num_connections param */
-    result = register_rdma_num_connections_param();
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to register num_connections parameter: %s", doca_error_get_descr(result));
-        goto argp_cleanup;
-    }
 
     /* Start argparser */
     result = doca_argp_start(argc, argv);
@@ -100,16 +114,31 @@ int main(int argc, char **argv)
         goto argp_cleanup;
     }
 
-    /* Start sample */
-    result = rdma_multi_conn_receive(&cfg);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("rdma_multi_conn_receive() failed: %s", doca_error_get_descr(result));
-        goto argp_cleanup;
-    }
+    result = allocate_rdma_copy_resources(&resources, &cfg);
+    JUMP_ON_DOCA_ERROR(result, error);
+
+
+    const void * export_descriptor_ptr = (void*)resources.export_descriptor;
+	result = doca_mmap_export_pci(resources.buf_mmap, resources.doca_device, &export_descriptor_ptr, &resources.export_descriptor_size);
+    JUMP_ON_DOCA_ERROR(result, error);
+
+    print_buffer_hex(export_descriptor_ptr, resources.export_descriptor_size);
+
+    char port[MAX_PORT_LEN];
+    
+    int_to_port_str(cfg.sock_port, port, MAX_PORT_LEN);
+
+    log_info("start connect");
+    cfg.sock_fd = sock_create_connect(cfg.sock_ip, port);
+    log_info("connection established: %d", cfg.sock_fd);
+    JUMP_ON_FAILURE_CONDITION((cfg.sock_fd < 0), error, "create socket fail");
+
+    result = sock_send_buffer(export_descriptor_ptr, resources.export_descriptor_size, cfg.sock_fd);
+    JUMP_ON_DOCA_ERROR(result, error);
 
     exit_status = EXIT_SUCCESS;
-
+error:
+    close(cfg.sock_fd);
 argp_cleanup:
     doca_argp_destroy();
 sample_exit:

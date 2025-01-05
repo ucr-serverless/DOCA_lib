@@ -63,62 +63,6 @@ doca_error_t check_rdma_send_recv(const struct doca_devinfo * devinfo)
 
 }
 
-doca_error_t send_rdma_conn_descriptor(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd)
-{
-    if (sock_write(sock_fd, &descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
-    {
-        log_error("Error, send descriptor size\n");
-        goto error;
-    }
-    ssize_t write_len = sock_write(sock_fd, rdma_conn_descriptor, descriptor_size);
-    log_info("read: %u, descriptor_size: %u", write_len, descriptor_size);
-    if (write_len < 0)
-    {
-        goto error;
-    }
-    if (write_len != descriptor_size)
-    {
-        log_error("Error, send descriptor\n");
-        goto error;
-    }
-
-    return DOCA_SUCCESS;
-
-error:
-    log_error("Error, send descriptor");
-    return DOCA_ERROR_IO_FAILED;
-}
-
-doca_error_t recv_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
-                                       int sock_fd)
-{
-
-    if (sock_read(sock_fd, descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
-    {
-        log_error("Error, recv descriptor size\n");
-        goto error;
-    }
-    if (descriptor_buf_size < *descriptor_size)
-    {
-        log_fatal("receive buffer is smaller then the incoming data");
-        goto error;
-    }
-    ssize_t read_len = sock_read(sock_fd, rdma_conn_descriptor, *descriptor_size);
-    if (read_len < 0)
-    {
-        goto error;
-    }
-    if (read_len != *descriptor_size)
-    {
-        log_error("Error, recv descriptor\n");
-        goto error;
-    }
-    return DOCA_SUCCESS;
-
-error:
-    log_error("Error, recv descriptor");
-    return DOCA_ERROR_IO_FAILED;
-}
 
 /*
  * ARGP Callback - Handle IB device name parameter

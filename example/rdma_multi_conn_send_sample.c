@@ -187,7 +187,7 @@ static doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resource
 
         /* Write and read connection details to the receiver */
         /* result = write_read_connection(resources->cfg, resources, i); */
-        result = recv_rdma_conn_descriptor(resources->remote_rdma_conn_descriptor,
+        result = sock_recv_buffer(resources->remote_rdma_conn_descriptor,
                                            &resources->remote_rdma_conn_descriptor_size, MAX_RDMA_DESCRIPTOR,
                                            resources->cfg->sock_fd);
         if (result != DOCA_SUCCESS)
@@ -195,7 +195,7 @@ static doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resource
             DOCA_LOG_ERR("Failed to write and read connection details from receiver: %s", doca_error_get_descr(result));
             return result;
         }
-        result = send_rdma_conn_descriptor(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size,
+        result = sock_send_buffer(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size,
                                            resources->cfg->sock_fd);
         if (result != DOCA_SUCCESS)
         {
@@ -499,13 +499,13 @@ doca_error_t rdma_multi_conn_send(struct rdma_config *cfg)
      */
 
     int ep_fd = epoll_create1(0);
-    JUMP_ON_FAILURE_CONDITION((ep_fd == -1), error);
+    JUMP_ON_FAILURE_CONDITION((ep_fd == -1), error, "epoll create fail");
 
     result = register_pe_event(resources.pe, ep_fd);
-    JUMP_ON_FAILURE(result, error);
+    JUMP_ON_DOCA_ERROR(result, error);
 
     result = run_for_competion(resources.pe, ep_fd, wait_condition, (void *)&resources);
-    JUMP_ON_FAILURE(result, error);
+    JUMP_ON_DOCA_ERROR(result, error);
 
     /* while (resources.run_pe_progress) */
     /* { */

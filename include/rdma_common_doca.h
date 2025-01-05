@@ -158,10 +158,6 @@ struct rdma_resources
                               rdma_task_read/write */
 };
 
-doca_error_t send_rdma_conn_descriptor(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd);
-
-doca_error_t recv_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
-                                       int sock_fd);
 /*
  * Allocate DOCA RDMA resources
  *

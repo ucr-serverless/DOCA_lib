@@ -40,6 +40,8 @@
 #include <sys/epoll.h>
 #include <doca_rdma.h>
 #include <doca_dma.h>
+#include "sock_utils.h"
+#include "log.h"
 
 #include "common_doca.h"
 
@@ -128,6 +130,7 @@ doca_error_t memory_alloc_and_populate(struct doca_mmap *mmap, size_t buffer_len
         DOCA_LOG_ERR("Failed to allocate memory for source buffer");
         return DOCA_ERROR_NO_MEMORY;
     }
+    DOCA_LOG_INFO("The raw buffer address is %p", buffer);
 
     result = doca_mmap_set_memrange(mmap, *buffer, buffer_len);
     if (result != DOCA_SUCCESS)
@@ -162,6 +165,63 @@ void print_buffer_hex(const void *buffer, size_t length)
         }
     }
     printf("\n\n");
+}
+
+doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd)
+{
+    if (sock_write(sock_fd, &descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
+    {
+        log_error("Error, send descriptor size\n");
+        goto error;
+    }
+    ssize_t write_len = sock_write(sock_fd, rdma_conn_descriptor, descriptor_size);
+    log_info("read: %u, descriptor_size: %u", write_len, descriptor_size);
+    if (write_len < 0)
+    {
+        goto error;
+    }
+    if (write_len != descriptor_size)
+    {
+        log_error("Error, send descriptor\n");
+        goto error;
+    }
+
+    return DOCA_SUCCESS;
+
+error:
+    log_error("Error, send descriptor");
+    return DOCA_ERROR_IO_FAILED;
+}
+
+doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
+                                       int sock_fd)
+{
+
+    if (sock_read(sock_fd, descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
+    {
+        log_error("Error, recv descriptor size\n");
+        goto error;
+    }
+    if (descriptor_buf_size < *descriptor_size)
+    {
+        log_fatal("receive buffer is smaller then the incoming data");
+        goto error;
+    }
+    ssize_t read_len = sock_read(sock_fd, rdma_conn_descriptor, *descriptor_size);
+    if (read_len < 0)
+    {
+        goto error;
+    }
+    if (read_len != *descriptor_size)
+    {
+        log_error("Error, recv descriptor\n");
+        goto error;
+    }
+    return DOCA_SUCCESS;
+
+error:
+    log_error("Error, recv descriptor");
+    return DOCA_ERROR_IO_FAILED;
 }
 
 doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, struct doca_dev **retval)

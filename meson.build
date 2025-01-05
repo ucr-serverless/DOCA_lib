@@ -47,6 +47,7 @@ bin_programs = [
   ['rdma_send', ['example/rdma_multi_conn_send_main.c', 'example/rdma_multi_conn_send_sample.c']],
   ['rdma_receive', ['example/rdma_multi_conn_receive_main.c', 'example/rdma_multi_conn_receive_sample.c']],
   ['rdma_receive_export_host', ['example/rdma_multi_conn_receive_export_host_main.c', 'example/rdma_multi_conn_receive_sample.c']],
+  ['host_export', ['example/host_export_main.c']],
 ]
 
 libDOCA_lib = static_library(

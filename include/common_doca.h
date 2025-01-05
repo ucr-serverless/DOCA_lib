@@ -46,7 +46,8 @@ extern "C"
         }                                                                                                              \
     }
 
-#define JUMP_ON_FAILURE(_expression_, _label)                                                                          \
+// evaluate on a expression that return doca_error_t and jump to the _label if not DOCA_SUCCESS
+#define JUMP_ON_DOCA_ERROR(_expression_, _label)                                                                          \
     {                                                                                                                  \
         doca_error_t _status_ = _expression_;                                                                          \
                                                                                                                        \
@@ -56,12 +57,13 @@ extern "C"
             goto _label;                                                                                               \
         }                                                                                                              \
     }
-#define JUMP_ON_FAILURE_CONDITION(_status_, _label)                                                                    \
+// if the status is false, then jump to label and log with custom string
+#define JUMP_ON_FAILURE_CONDITION(_status_, _label, _string)                                                                    \
     {                                                                                                                  \
                                                                                                                        \
         if (_status_)                                                                                                  \
         {                                                                                                              \
-            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_status_, doca_error_get_descr(_status_));         \
+            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_status_, _string);         \
             goto _label;                                                                                               \
         }                                                                                                              \
     }
@@ -100,6 +102,10 @@ extern "C"
                                            char **buffer);
 
     void print_buffer_hex(const void *buffer, size_t length);
+
+    doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
+                                       int sock_fd);
+    doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd);
     /*
      * register the pe fd to the ep_fd
      *
