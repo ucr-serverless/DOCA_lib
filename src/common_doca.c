@@ -153,6 +153,7 @@ doca_error_t create_doca_mmap_from_buf(struct doca_mmap **mmap, size_t buffer_le
         DOCA_LOG_ERR("Failed to allocate memory for source buffer");
         goto free_buf;
     }
+    memset(buffer, 0, buffer_len);
     DOCA_LOG_INFO("The raw buffer address is %p", buffer);
 
     result = doca_mmap_set_memrange(*mmap, *buffer, buffer_len);
@@ -211,6 +212,17 @@ void print_buffer_hex(const void *buffer, size_t length)
     printf("\n\n");
 }
 
+doca_error_t sock_send_ptr(void *ptr, int sock_fd)
+{
+    if (sock_write(sock_fd, ptr, sizeof(uint64_t)) != sizeof(uint64_t))
+    {
+        log_error("Error, send ptr size\n");
+        return DOCA_ERROR_IO_FAILED;
+    }
+    log_info("send ptr addr: %p", ptr);
+    return DOCA_SUCCESS;
+}
+
 doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, uint32_t descriptor_size, int sock_fd)
 {
     if (sock_write(sock_fd, &descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
@@ -235,6 +247,16 @@ doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, uint32_t descrip
 error:
     log_error("Error, send descriptor");
     return DOCA_ERROR_IO_FAILED;
+}
+doca_error_t sock_recv_ptr(void **ptr, int sock_fd)
+{
+    if (sock_read(sock_fd, ptr, sizeof(uint64_t)) != sizeof(uint64_t))
+    {
+        log_error("Error, recv ptr size\n");
+        return DOCA_ERROR_IO_FAILED;
+    }
+    log_info("receive ptr addr: %p", *ptr);
+    return DOCA_SUCCESS;
 }
 
 doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, uint32_t *descriptor_size, uint32_t descriptor_buf_size,

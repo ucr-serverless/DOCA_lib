@@ -1152,7 +1152,6 @@ doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdm
             DOCA_LOG_ERR("Failed to destroy DOCA remote mmap: %s", doca_error_get_descr(tmp_result));
             DOCA_ERROR_PROPAGATE(result, tmp_result);
         }
-
     }
 
     /* Stop and destroy remote mmap if exists */

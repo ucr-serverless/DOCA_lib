@@ -49,8 +49,8 @@ extern "C"
 #include "common_doca.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+    extern "C"
+    {
 #endif
 
 #define MEM_RANGE_LEN (4096)                 /* DOCA mmap memory range length */
@@ -94,13 +94,13 @@ struct rdma_config
     char write_string[MAX_ARG_SIZE];                /* String to write */
     char local_connection_desc_path[MAX_ARG_SIZE];  /* Path to save the local connection information */
     char remote_connection_desc_path[MAX_ARG_SIZE]; /* Path to read the remote connection information */
-    char remote_resource_desc_path[MAX_ARG_SIZE];   /* Path to read/save the remote mmap connection information */
-    bool is_gid_index_set;                          /* Is the set_index parameter passed */
-    uint32_t gid_index;                             /* GID index for DOCA RDMA */
+    char remote_resource_desc_path[MAX_ARG_SIZE]; /* Path to read/save the remote mmap connection information */
+    bool is_gid_index_set;                        /* Is the set_index parameter passed */
+    uint32_t gid_index;                           /* GID index for DOCA RDMA */
     uint32_t num_connections; /* The maximum number of allowed connections, only useful for server for multiple
                     connection samples */
-    enum doca_rdma_transport_type transport_type; /* RC or DC, RC is the default, only useful for single connection
-                             out-of-band RDMA for now */
+    enum doca_rdma_transport_type transport_type; /* RC or DC, RC is the default, only useful for single
+                             connection out-of-band RDMA for now */
 
     /* The following fields are only related to rdma_cm */
     bool use_rdma_cm;                      /* Whether test rdma-only or rdma-cm,
@@ -155,8 +155,8 @@ struct rdma_resources
     /* The following cmdline args are only related to rdma_cm */
     struct doca_rdma_addr *cm_addr;                                /* Server address to connect by a client */
     struct doca_rdma_connection *connections[MAX_NUM_CONNECTIONS]; /* The RDMA_CM connection instance */
-    bool connection_established[MAX_NUM_CONNECTIONS]; /* Indication whether the corresponding connection have been
-                                 estableshed */
+    bool connection_established[MAX_NUM_CONNECTIONS]; /* Indication whether the corresponding connection have
+                                 been estableshed */
     uint32_t num_connection_established;              /* Indicate how many connections has been established */
     struct doca_mmap *mmap_descriptor_mmap;           /* Used to send local mmap descriptor to remote peer */
     struct doca_mmap *remote_mmap_descriptor_mmap;    /* Used to receive remote peer mmap descriptor */
@@ -166,10 +166,11 @@ struct rdma_resources
     const char *self_name;     /* Client or Server */
     bool is_client;            /* Client or Server */
     bool is_requester;         /* Responder or requester */
-    prepare_and_submit_task_fn task_fn; /* Function to execute in rdma_cm callback when peer info exchange finished
-                                         */
-    bool require_remote_mmap;           /* Indicate whether need remote mmap information, for example for
-                              rdma_task_read/write */
+    prepare_and_submit_task_fn
+        task_fn;              /* Function to execute in rdma_cm callback when peer info exchange finished
+                               */
+    bool require_remote_mmap; /* Indicate whether need remote mmap information, for example for
+                    rdma_task_read/write */
 };
 
 /*
@@ -286,8 +287,9 @@ doca_error_t rdma_cm_disconnect(struct rdma_resources *resources);
  * @user_data [in]: The doca_data instance to be embedded into the doca_rdma_task_send
  * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
  */
-doca_error_t send_msg(struct doca_rdma *rdma, struct doca_rdma_connection *rdma_connection, struct doca_mmap *mmap,
-                      struct doca_buf_inventory *buf_inv, void *msg, uint32_t msg_len, void *user_data);
+doca_error_t send_msg(struct doca_rdma *rdma, struct doca_rdma_connection *rdma_connection,
+                      struct doca_mmap *mmap, struct doca_buf_inventory *buf_inv, void *msg, uint32_t msg_len,
+                      void *user_data);
 
 /*
  * Receive a message from the peer using the RDMA receive task, used in negotiation for peers
@@ -300,8 +302,8 @@ doca_error_t send_msg(struct doca_rdma *rdma, struct doca_rdma_connection *rdma_
  * @user_data [in]: The doca_data instance to be embedded into the doca_rdma_task_receive
  * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
  */
-doca_error_t recv_msg(struct doca_rdma *rdma, struct doca_mmap *mmap, struct doca_buf_inventory *buf_inv, void *msg,
-                      uint32_t msg_len, void *user_data);
+doca_error_t recv_msg(struct doca_rdma *rdma, struct doca_mmap *mmap, struct doca_buf_inventory *buf_inv,
+                      void *msg, uint32_t msg_len, void *user_data);
 
 /*
  * Callback for the doca_rdma receive task successful completion used in recv_msg()
@@ -358,8 +360,8 @@ void rdma_cm_connect_request_cb(struct doca_rdma_connection *connection, union d
  * @connection_user_data [in]: The preset user_data for this connection
  * @ctx_user_data [in]: The preset ctx_data for this connection
  */
-void rdma_cm_connect_established_cb(struct doca_rdma_connection *connection, union doca_data connection_user_data,
-                                    union doca_data ctx_user_data);
+void rdma_cm_connect_established_cb(struct doca_rdma_connection *connection,
+                                    union doca_data connection_user_data, union doca_data ctx_user_data);
 
 /*
  * Callback for the rdma_cm connection setup fails
@@ -430,10 +432,11 @@ doca_error_t rdma_requester_recv_data_from_rdma_responder(struct rdma_resources 
 doca_error_t rdma_responder_send_data_to_rdma_requester(struct rdma_resources *resources);
 
 /*
- * This function is used for waiting for pressing anykey on the keyboard, purely for waiting/co-ordinating purpose.
+ * This function is used for waiting for pressing anykey on the keyboard, purely for waiting/co-ordinating
+ * purpose.
  */
 
 #ifdef __cplusplus
-}
+    }
 #endif
 #endif /* RDMA_COMMON_H_ */
