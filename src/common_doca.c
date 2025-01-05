@@ -248,7 +248,7 @@ doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, size_t *descriptor_siz
     }
     if (descriptor_buf_size < *descriptor_size)
     {
-        log_fatal("receive buffer %d is smaller then the incoming data %d", *descriptor_size, descriptor_buf_size);
+        log_fatal("receive buffer %d is smaller then the incoming data %d", descriptor_buf_size, *descriptor_size);
         goto error;
     }
     ssize_t read_len = sock_read(sock_fd, rdma_conn_descriptor, *descriptor_size);

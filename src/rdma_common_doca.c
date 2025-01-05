@@ -912,10 +912,12 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
 
     if (cfg->is_host_export && (cfg->host_descriptor != NULL))
     {
+
         result = doca_mmap_create_from_export(NULL, (const void *)cfg->host_descriptor, cfg->host_descriptor_size,
                                               resources->doca_device, &cfg->host_mmap);
 
         JUMP_ON_DOCA_ERROR(result, destroy_pe);
+        DOCA_LOG_INFO("import buffer success");
     }
 
     result = doca_pe_create(&(resources->pe));
