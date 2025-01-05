@@ -164,10 +164,10 @@ static doca_error_t write_string_callback(void *param, void *config)
 
 static doca_error_t bool_callback(void *param, void *config)
 {
-	struct rdma_config *app_cfg = (struct rdma_config *)config;
-	app_cfg->is_host_export = *(bool *)param;
+    struct rdma_config *app_cfg = (struct rdma_config *)config;
+    app_cfg->is_host_export = *(bool *)param;
 
-	return DOCA_SUCCESS;
+    return DOCA_SUCCESS;
 }
 /*
  * ARGP Callback - Handle exported descriptor file path parameter
@@ -686,16 +686,17 @@ doca_error_t register_rdma_common_params(void)
         DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
         return result;
     }
-	doca_argp_param_set_short_name(is_host_export_param, "he");
-	doca_argp_param_set_long_name(is_host_export_param, "host_export");
-	doca_argp_param_set_description(is_host_export_param, "flags on whether to accecpt host exported mmap");
-	doca_argp_param_set_callback(is_host_export_param, bool_callback);
-	doca_argp_param_set_type(is_host_export_param, DOCA_ARGP_TYPE_BOOLEAN);
-	result = doca_argp_register_param(is_host_export_param);
-	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
-		return result;
-	}
+    doca_argp_param_set_short_name(is_host_export_param, "he");
+    doca_argp_param_set_long_name(is_host_export_param, "host_export");
+    doca_argp_param_set_description(is_host_export_param, "flags on whether to accecpt host exported mmap");
+    doca_argp_param_set_callback(is_host_export_param, bool_callback);
+    doca_argp_param_set_type(is_host_export_param, DOCA_ARGP_TYPE_BOOLEAN);
+    result = doca_argp_register_param(is_host_export_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
 
     /* Create and register device param */
     result = doca_argp_param_create(&device_param);
@@ -907,6 +908,14 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     {
         DOCA_LOG_ERR("Failed to create DOCA mmap: %s", doca_error_get_descr(result));
         goto free_memrange;
+    }
+
+    if (cfg->is_host_export && (cfg->host_descriptor != NULL))
+    {
+        result = doca_mmap_create_from_export(NULL, (const void *)cfg->host_descriptor, cfg->host_descriptor_size,
+                                              resources->doca_device, &cfg->host_mmap);
+
+        JUMP_ON_DOCA_ERROR(result, destroy_pe);
     }
 
     result = doca_pe_create(&(resources->pe));
@@ -1924,4 +1933,3 @@ doca_error_t config_rdma_cm_callback_and_negotiation_task(struct rdma_resources 
 
     return DOCA_SUCCESS;
 }
-

@@ -28,8 +28,13 @@
 #include <doca_argp.h>
 #include <doca_log.h>
 
+#include "common_doca.h"
+#include "log.h"
 #include "rdma_common_doca.h"
+#include "sock_utils.h"
 
+#define DEFAULT_LISTEN_ADDR "0.0.0.0"
+#define DEFAULT_LISTEN_PORT "10005"
 DOCA_LOG_REGISTER(RDMA_EXPORT_HOST_RECEIVE::MAIN);
 
 /* Sample's Logic */
@@ -104,6 +109,36 @@ int main(int argc, char **argv)
         goto argp_cleanup;
     }
 
+    char port[MAX_PORT_LEN];
+
+    int_to_port_str(cfg.sock_port, port, MAX_PORT_LEN);
+
+    int fd = sock_create_bind(DEFAULT_LISTEN_ADDR, DEFAULT_LISTEN_PORT);
+    if (fd < 0)
+    {
+        log_error("sock fd fail");
+        goto server_sock_error;
+    }
+    log_info("start listen from host");
+    struct sockaddr_in peer_addr;
+    socklen_t peer_addr_len = sizeof(struct sockaddr_in);
+    int ret = listen(fd, 5);
+    JUMP_ON_FAILURE_CONDITION((ret < 0), server_sock_error, "listen error");
+
+    cfg.sock_fd = accept(fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
+    JUMP_ON_FAILURE_CONDITION((cfg.sock_fd < 0), server_sock_error, "accept error");
+
+    log_info("received connection: %d", cfg.sock_fd);
+
+    cfg.host_descriptor = malloc(MAX_RDMA_DESCRIPTOR_SZ);
+    JUMP_ON_FAILURE_CONDITION((cfg.host_descriptor == NULL), host_descriptor_free,
+                              "allocate mem for host descriptor faile");
+
+    result = sock_recv_buffer(cfg.host_descriptor, &cfg.host_descriptor_size, MAX_RDMA_DESCRIPTOR_SZ, cfg.sock_fd);
+    JUMP_ON_DOCA_ERROR(result, client_sock_error);
+
+    print_buffer_hex(cfg.host_descriptor, cfg.host_descriptor_size);
+
     /* Start sample */
     result = rdma_multi_conn_receive(&cfg);
     if (result != DOCA_SUCCESS)
@@ -113,7 +148,15 @@ int main(int argc, char **argv)
     }
 
     exit_status = EXIT_SUCCESS;
-
+host_descriptor_free:
+    if (cfg.host_descriptor)
+    {
+        free(cfg.host_descriptor);
+    }
+client_sock_error:
+    close(cfg.sock_fd);
+server_sock_error:
+    close(fd);
 argp_cleanup:
     doca_argp_destroy();
 sample_exit:

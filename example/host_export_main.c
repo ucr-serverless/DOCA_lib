@@ -130,13 +130,10 @@ int main(int argc, char **argv)
     result = sock_send_buffer(export_descriptor_ptr, resources.export_descriptor_size, cfg.sock_fd);
     JUMP_ON_DOCA_ERROR(result, error);
 
-
     wait_for_enter();
-    DOCA_LOG_INFO("The content of mmap: %s", (char*)resources.buf);
+    DOCA_LOG_INFO("The content of mmap: %s", (char *)resources.buf);
     wait_for_enter();
-    DOCA_LOG_INFO("The content of mmap: %s", (char*)resources.buf);
-
-
+    DOCA_LOG_INFO("The content of mmap: %s", (char *)resources.buf);
 
     exit_status = EXIT_SUCCESS;
 error:

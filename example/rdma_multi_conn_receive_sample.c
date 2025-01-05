@@ -194,7 +194,7 @@ static doca_error_t rdma_multi_conn_receive_export_and_connect(struct rdma_resou
     if (resources->cfg->use_rdma_cm == true)
         return rdma_cm_connect(resources);
 
-    resources->remote_rdma_conn_descriptor = malloc(MAX_RDMA_DESCRIPTOR);
+    resources->remote_rdma_conn_descriptor = malloc(MAX_RDMA_DESCRIPTOR_SZ);
     if (!resources->remote_rdma_conn_descriptor)
     {
         return DOCA_ERROR_NO_MEMORY;
@@ -222,7 +222,7 @@ static doca_error_t rdma_multi_conn_receive_export_and_connect(struct rdma_resou
             return result;
         }
         result = sock_recv_buffer(resources->remote_rdma_conn_descriptor, &resources->remote_rdma_conn_descriptor_size,
-                                  MAX_RDMA_DESCRIPTOR, resources->cfg->sock_fd);
+                                  MAX_RDMA_DESCRIPTOR_SZ, resources->cfg->sock_fd);
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to recv details from sender: %s", doca_error_get_descr(result));

@@ -65,7 +65,7 @@
 #define CLIENT_NAME "Client"
 #define DEFAULT_RDMA_CM_PORT (13579)
 #define MAX_NUM_CONNECTIONS (8)
-#define MAX_RDMA_DESCRIPTOR 1024
+#define MAX_RDMA_DESCRIPTOR_SZ 1024
 
 /* Forward declaration */
 struct rdma_resources;
@@ -106,16 +106,18 @@ struct rdma_config
     int sock_fd;
     int sock_port;
     bool is_host_export;
+    void *host_descriptor;
+    size_t host_descriptor_size;
+    struct doca_mmap *host_mmap;
 };
 
 struct rdma_resources
 {
-    struct rdma_config *cfg;       /* RDMA samples configuration parameters */
-    struct doca_dev *doca_device;  /* DOCA device */
-    struct doca_pe *pe;            /* DOCA progress engine */
-    struct doca_mmap *mmap;        /* DOCA memory map */
-    struct doca_mmap *remote_mmap; /* DOCA remote memory map */
-    struct doca_mmap *host_mmap;
+    struct rdma_config *cfg;                      /* RDMA samples configuration parameters */
+    struct doca_dev *doca_device;                 /* DOCA device */
+    struct doca_pe *pe;                           /* DOCA progress engine */
+    struct doca_mmap *mmap;                       /* DOCA memory map */
+    struct doca_mmap *remote_mmap;                /* DOCA remote memory map */
     struct doca_sync_event *sync_event;           /* DOCA sync event */
     struct doca_sync_event_remote_net *remote_se; /* DOCA remote sync event */
     char *mmap_memrange;                          /* DOCA remote memory map memory range */
