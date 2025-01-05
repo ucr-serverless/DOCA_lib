@@ -45,9 +45,8 @@ extern "C"
             return _status_;                                                                                           \
         }                                                                                                              \
     }
-
-// evaluate on a expression that return doca_error_t and jump to the _label if not DOCA_SUCCESS
-#define JUMP_ON_DOCA_ERROR(_expression_, _label)                                                                          \
+// evaluate the expression and jump to label is the result is not DOCA_SUCCESS
+#define EVAL_JUMP_ON_DOCA_ERROR(_expression_, _label)                                                                  \
     {                                                                                                                  \
         doca_error_t _status_ = _expression_;                                                                          \
                                                                                                                        \
@@ -57,13 +56,23 @@ extern "C"
             goto _label;                                                                                               \
         }                                                                                                              \
     }
+// if the result is not DOCA_SUCCESS then jump to the _label
+#define JUMP_ON_DOCA_ERROR(_result, _label)                                                                            \
+    {                                                                                                                  \
+                                                                                                                       \
+        if (_result != DOCA_SUCCESS)                                                                                   \
+        {                                                                                                              \
+            DOCA_LOG_ERR("%s failed with status %s", __func__, doca_error_get_descr(_result));                         \
+            goto _label;                                                                                               \
+        }                                                                                                              \
+    }
 // if the status is false, then jump to label and log with custom string
-#define JUMP_ON_FAILURE_CONDITION(_status_, _label, _string)                                                                    \
+#define JUMP_ON_FAILURE_CONDITION(_status_, _label, _string)                                                           \
     {                                                                                                                  \
                                                                                                                        \
         if (_status_)                                                                                                  \
         {                                                                                                              \
-            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_status_, _string);         \
+            DOCA_LOG_ERR("%s: %s failed with status %s", __func__, #_status_, _string);                                \
             goto _label;                                                                                               \
         }                                                                                                              \
     }
@@ -104,7 +113,7 @@ extern "C"
     void print_buffer_hex(const void *buffer, size_t length);
 
     doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
-                                       int sock_fd);
+                                  int sock_fd);
     doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd);
     /*
      * register the pe fd to the ep_fd
@@ -145,7 +154,8 @@ extern "C"
      * @retval [out]: pointer to doca_dev struct, NULL if not found
      * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
      */
-    doca_error_t open_doca_device_with_ibdev_str(const char *device_name, tasks_check func, struct doca_dev **doca_device);
+    doca_error_t open_doca_device_with_ibdev_str(const char *device_name, tasks_check func,
+                                                 struct doca_dev **doca_device);
 
     /*
      * Open a DOCA device according to a given IB device name

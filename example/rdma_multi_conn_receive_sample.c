@@ -215,15 +215,14 @@ static doca_error_t rdma_multi_conn_receive_export_and_connect(struct rdma_resou
         /* write and read connection details to the sender */
         /* result = write_read_connection(resources->cfg, resources, i); */
         result = sock_send_buffer(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size,
-                                           resources->cfg->sock_fd);
+                                  resources->cfg->sock_fd);
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to send details from sender: %s", doca_error_get_descr(result));
             return result;
         }
-        result = sock_recv_buffer(resources->remote_rdma_conn_descriptor,
-                                           &resources->remote_rdma_conn_descriptor_size, MAX_RDMA_DESCRIPTOR,
-                                           resources->cfg->sock_fd);
+        result = sock_recv_buffer(resources->remote_rdma_conn_descriptor, &resources->remote_rdma_conn_descriptor_size,
+                                  MAX_RDMA_DESCRIPTOR, resources->cfg->sock_fd);
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to recv details from sender: %s", doca_error_get_descr(result));

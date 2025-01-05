@@ -67,7 +67,6 @@
 #define MAX_NUM_CONNECTIONS (8)
 #define MAX_RDMA_DESCRIPTOR 1024
 
-
 /* Forward declaration */
 struct rdma_resources;
 

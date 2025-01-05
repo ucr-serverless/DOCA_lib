@@ -28,20 +28,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "log.h"
+#include "sock_utils.h"
 #include <doca_buf.h>
 #include <doca_buf_inventory.h>
 #include <doca_ctx.h>
 #include <doca_dev.h>
+#include <doca_dma.h>
 #include <doca_error.h>
 #include <doca_log.h>
 #include <doca_mmap.h>
 #include <doca_pe.h>
+#include <doca_rdma.h>
 #include <errno.h>
 #include <sys/epoll.h>
-#include <doca_rdma.h>
-#include <doca_dma.h>
-#include "sock_utils.h"
-#include "log.h"
 
 #include "common_doca.h"
 
@@ -54,55 +54,64 @@ void check_dev_cap(const struct doca_devinfo *devinfo)
     uint8_t ret;
     result = doca_mmap_cap_is_create_from_export_pci_supported(devinfo, &ret);
     DOCA_LOG_INFO("start check");
-    if (result != DOCA_SUCCESS) {
+    if (result != DOCA_SUCCESS)
+    {
         DOCA_LOG_ERR("mmap query fail");
     }
-    if (ret == 1) {
+    if (ret == 1)
+    {
         DOCA_LOG_INFO("device support create mmap");
     }
     result = doca_rdma_cap_task_receive_is_supported(devinfo);
-    if (result != DOCA_SUCCESS) {
+    if (result != DOCA_SUCCESS)
+    {
         DOCA_LOG_ERR("rdma_receive not supportted");
     }
-    else {
+    else
+    {
         DOCA_LOG_INFO("rdma receive supportted");
     }
     result = doca_rdma_cap_task_send_is_supported(devinfo);
-    if (result != DOCA_SUCCESS) {
+    if (result != DOCA_SUCCESS)
+    {
         DOCA_LOG_ERR("rdma send not supportted");
     }
-    else {
+    else
+    {
         DOCA_LOG_INFO("rdma send supportted");
     }
     result = doca_dma_cap_task_memcpy_is_supported(devinfo);
-    if (result != DOCA_SUCCESS) {
+    if (result != DOCA_SUCCESS)
+    {
         DOCA_LOG_ERR("dma memcpy is not supportted");
     }
-    else {
+    else
+    {
         DOCA_LOG_ERR("dma memcpy supportted");
     }
     uint8_t ip_addr[DOCA_DEVINFO_IPV4_ADDR_SIZE] = {0};
     result = doca_devinfo_get_ipv4_addr(devinfo, ip_addr, DOCA_DEVINFO_IPV4_ADDR_SIZE);
-    if (result != DOCA_SUCCESS) {
+    if (result != DOCA_SUCCESS)
+    {
         DOCA_LOG_ERR("ipv4 addr is not found");
     }
-    else {
-            DOCA_LOG_INFO("IPv4 Address: %u.%u.%u.%u\n",
-           ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
+    else
+    {
+        DOCA_LOG_INFO("IPv4 Address: %u.%u.%u.%u\n", ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
     }
 
     uint8_t mac_addr[DOCA_DEVINFO_MAC_ADDR_SIZE];
     result = doca_devinfo_get_mac_addr(devinfo, mac_addr, DOCA_DEVINFO_MAC_ADDR_SIZE);
-    if (result != DOCA_SUCCESS) {
+    if (result != DOCA_SUCCESS)
+    {
         DOCA_LOG_ERR("mac addr is not found");
     }
-    else {
-            DOCA_LOG_INFO("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\n",
-           mac_addr[0], mac_addr[1], mac_addr[2],
-           mac_addr[3], mac_addr[4], mac_addr[5]);
+    else
+    {
+        DOCA_LOG_INFO("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac_addr[0], mac_addr[1], mac_addr[2],
+                      mac_addr[3], mac_addr[4], mac_addr[5]);
     }
     DOCA_LOG_INFO("end check");
-
 }
 /*
  * Allocate memory and populate it into the memory map
@@ -113,8 +122,7 @@ void check_dev_cap(const struct doca_devinfo *devinfo)
  * @buffer [out]: Allocated buffer
  * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
  */
-doca_error_t memory_alloc_and_populate(struct doca_mmap *mmap, size_t buffer_len, uint32_t access_flags,
-                                              char **buffer)
+doca_error_t memory_alloc_and_populate(struct doca_mmap *mmap, size_t buffer_len, uint32_t access_flags, char **buffer)
 {
     doca_error_t result;
 
@@ -194,7 +202,7 @@ error:
 }
 
 doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
-                                       int sock_fd)
+                              int sock_fd)
 {
 
     if (sock_read(sock_fd, descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))

@@ -42,27 +42,26 @@
 
 DOCA_LOG_REGISTER(RDMA::COMMON);
 
-
-doca_error_t check_rdma_send_recv(const struct doca_devinfo * devinfo)
+doca_error_t check_rdma_send_recv(const struct doca_devinfo *devinfo)
 {
     doca_error_t result;
     result = doca_rdma_cap_task_receive_is_supported(devinfo);
-    if (result != DOCA_SUCCESS) {
+    if (result != DOCA_SUCCESS)
+    {
         DOCA_LOG_ERR("rdma_receive not supportted");
         return result;
     }
     DOCA_LOG_INFO("rdma receive supportted");
 
     result = doca_rdma_cap_task_send_is_supported(devinfo);
-    if (result != DOCA_SUCCESS) {
+    if (result != DOCA_SUCCESS)
+    {
         DOCA_LOG_ERR("rdma send not supportted");
         return result;
     }
     DOCA_LOG_INFO("rdma send supportted");
     return DOCA_SUCCESS;
-
 }
-
 
 /*
  * ARGP Callback - Handle IB device name parameter
@@ -839,7 +838,8 @@ doca_error_t register_rdma_common_params(void)
 }
 
 doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mmap_permissions,
-                                     const uint32_t rdma_permissions, tasks_check func, struct rdma_resources *resources)
+                                     const uint32_t rdma_permissions, tasks_check func,
+                                     struct rdma_resources *resources)
 {
     doca_error_t result, tmp_result;
 
