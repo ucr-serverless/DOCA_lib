@@ -118,16 +118,17 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
 
     DOCA_LOG_INFO("the imme received is %d", imme);
 
+    // remove buf access operation(core dump)
     /* Check if dst_buf_data is null terminated and of legal size */
-    if (strnlen(dst_buf_data, MAX_BUFF_SIZE) == MAX_BUFF_SIZE)
-    {
-        DOCA_LOG_ERR("The message that was received from sender exceeds buffer size %d", MAX_BUFF_SIZE);
-        result = DOCA_ERROR_INVALID_VALUE;
-        goto free_task;
-    }
-
-    DOCA_LOG_INFO("Got from sender: \"%s\", sender's rdma_connection address [%p]", (char *)dst_buf_data,
-                  rdma_connection);
+    /* if (strnlen(dst_buf_data, MAX_BUFF_SIZE) == MAX_BUFF_SIZE) */
+    /* { */
+    /*     DOCA_LOG_ERR("The message that was received from sender exceeds buffer size %d", MAX_BUFF_SIZE); */
+    /*     result = DOCA_ERROR_INVALID_VALUE; */
+    /*     goto free_task; */
+    /* } */
+    /**/
+    /* DOCA_LOG_INFO("Got from sender: \"%s\", sender's rdma_connection address [%p]", (char *)dst_buf_data, */
+    /*               rdma_connection); */
 
 free_task:
     tmp_result = doca_buf_dec_refcount(dst_buf, NULL);
