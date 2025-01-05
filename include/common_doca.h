@@ -115,9 +115,11 @@ extern "C"
     void print_buffer_hex(const void *buffer, size_t length);
 
     doca_error_t sock_recv_ptr(uint64_t *ptr, int sock_fd);
+    doca_error_t sock_recv_range(uint64_t *range, int sock_fd);
     doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, uint32_t *descriptor_size, uint32_t descriptor_buf_size,
                                   int sock_fd);
     doca_error_t sock_send_ptr(uint64_t ptr, int sock_fd);
+    doca_error_t sock_send_range(uint64_t range, int sock_fd);
     doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, uint32_t descriptor_size, int sock_fd);
     /*
      * register the pe fd to the ep_fd

@@ -223,6 +223,16 @@ doca_error_t sock_send_ptr(uint64_t ptr, int sock_fd)
     return DOCA_SUCCESS;
 }
 
+doca_error_t sock_send_range(uint64_t range, int sock_fd)
+{
+    if (sock_write(sock_fd, &range, sizeof(uint64_t)) != sizeof(uint64_t))
+    {
+        log_error("Error, send ptr size\n");
+        return DOCA_ERROR_IO_FAILED;
+    }
+    log_info("send ptr addr: %p", range);
+    return DOCA_SUCCESS;
+}
 doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, uint32_t descriptor_size, int sock_fd)
 {
     if (sock_write(sock_fd, &descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
@@ -252,13 +262,23 @@ doca_error_t sock_recv_ptr(uint64_t *ptr, int sock_fd)
 {
     if (sock_read(sock_fd, ptr, sizeof(uint64_t)) != sizeof(uint64_t))
     {
-        log_error("Error, recv ptr size\n");
+        log_error("Error, recv range size\n");
         return DOCA_ERROR_IO_FAILED;
     }
-    log_info("receive ptr addr: %p", *ptr);
+    log_info("receive range addr: %p", *ptr);
     return DOCA_SUCCESS;
 }
 
+doca_error_t sock_recv_range(uint64_t *range, int sock_fd)
+{
+    if (sock_read(sock_fd, range, sizeof(uint64_t)) != sizeof(uint64_t))
+    {
+        log_error("Error, recv range size\n");
+        return DOCA_ERROR_IO_FAILED;
+    }
+    log_info("receive range addr: %p", *range);
+    return DOCA_SUCCESS;
+}
 doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, uint32_t *descriptor_size, uint32_t descriptor_buf_size,
                               int sock_fd)
 {

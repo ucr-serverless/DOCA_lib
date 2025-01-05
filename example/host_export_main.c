@@ -134,6 +134,9 @@ int main(int argc, char **argv)
     result = sock_send_ptr((uint64_t)resources.buf, cfg.sock_fd);
     JUMP_ON_DOCA_ERROR(result, error);
 
+    result = sock_send_range(resources.buf_sz, cfg.sock_fd);
+    JUMP_ON_DOCA_ERROR(result, error);
+
     DOCA_LOG_INFO("please press endter to contine");
     wait_for_enter();
     DOCA_LOG_INFO("The content of mmap: %s", (char *)resources.buf);

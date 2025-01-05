@@ -121,6 +121,7 @@ struct rdma_config
     void *host_descriptor;
     size_t host_descriptor_size;
     uint64_t host_buf_addr;
+    uint64_t host_buf_range;
     struct doca_mmap *host_mmap;
 };
 
