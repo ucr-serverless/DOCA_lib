@@ -105,11 +105,12 @@ extern "C"
      * @mmap [in]: DOCA memory map
      * @buffer_len [in]: Allocated buffer length
      * @access_flags [in]: The access permissions of the mmap
-     * @buffer [out]: Allocated buffer
+     * @dev [in]: The device to bind to the mmap
+     * @buffer [out]: Allocated buffer and user needs to free it
      * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
      */
-    doca_error_t memory_alloc_and_populate(struct doca_mmap *mmap, size_t buffer_len, uint32_t access_flags,
-                                           char **buffer);
+    doca_error_t create_doca_mmap_from_buf(struct doca_mmap **mmap, size_t buffer_len, uint32_t access_flags,
+                                           struct doca_dev *dev, char **buffer);
 
     void print_buffer_hex(const void *buffer, size_t length);
 

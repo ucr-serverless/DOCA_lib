@@ -42,8 +42,8 @@ doca_error_t allocate_rdma_copy_resources(struct host_resources *resources, stru
 
     resources->buf_sz = BUF_SZ;
 
-    result = memory_alloc_and_populate(resources->buf_mmap, resources->buf_sz, DOCA_ACCESS_FLAG_PCI_READ_WRITE,
-                                       &resources->buf);
+    result = create_doca_mmap_from_buf(&resources->buf_mmap, resources->buf_sz, DOCA_ACCESS_FLAG_PCI_READ_WRITE,
+                                       resources->doca_device, &resources->buf);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to allocate recv buffer: %s", doca_error_get_descr(result));

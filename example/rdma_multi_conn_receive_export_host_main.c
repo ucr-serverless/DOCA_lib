@@ -33,8 +33,8 @@
 #include "rdma_common_doca.h"
 #include "sock_utils.h"
 
-#define DEFAULT_LISTEN_ADDR "0.0.0.0"
-#define DEFAULT_LISTEN_PORT "10005"
+#define DEFAULT_MMAP_EXPT_LISTEN_ADDR "0.0.0.0"
+#define DEFAULT_MMAP_EXPT_LISTEN_PORT "10005"
 DOCA_LOG_REGISTER(RDMA_EXPORT_HOST_RECEIVE::MAIN);
 
 /* Sample's Logic */
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 
     int_to_port_str(cfg.sock_port, port, MAX_PORT_LEN);
 
-    int fd = sock_create_bind(DEFAULT_LISTEN_ADDR, DEFAULT_LISTEN_PORT);
+    int fd = sock_create_bind(DEFAULT_MMAP_EXPT_LISTEN_ADDR, DEFAULT_MMAP_EXPT_LISTEN_PORT);
     if (fd < 0)
     {
         log_error("sock fd fail");

@@ -67,6 +67,8 @@
 #define MAX_NUM_CONNECTIONS (8)
 #define MAX_RDMA_DESCRIPTOR_SZ 1024
 
+#define DEFAULT_MMAP_EXPT_LISTEN_ADDR "0.0.0.0"
+#define DEFAULT_MMAP_EXPT_LISTEN_PORT "10005"
 /* Forward declaration */
 struct rdma_resources;
 

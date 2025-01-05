@@ -130,41 +130,69 @@ void check_dev_cap(const struct doca_devinfo *devinfo)
  * @buffer [out]: Allocated buffer
  * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
  */
-doca_error_t memory_alloc_and_populate(struct doca_mmap *mmap, size_t buffer_len, uint32_t access_flags, char **buffer)
+doca_error_t create_doca_mmap_from_buf(struct doca_mmap **mmap, size_t buffer_len, uint32_t access_flags,
+                                       struct doca_dev *dev, char **buffer)
 {
     doca_error_t result;
 
-    result = doca_mmap_set_permissions(mmap, access_flags);
+    result = doca_mmap_create(mmap);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create mmap for source buffer, error: %s", doca_error_get_descr(result));
+        return result;
+    }
+    result = doca_mmap_set_permissions(*mmap, access_flags);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set access permissions of memory map: %s", doca_error_get_descr(result));
-        return result;
+        goto destroy_mmap;
     }
     *buffer = (char *)malloc(buffer_len);
     if (*buffer == NULL)
     {
         DOCA_LOG_ERR("Failed to allocate memory for source buffer");
-        return DOCA_ERROR_NO_MEMORY;
+        goto free_buf;
     }
     DOCA_LOG_INFO("The raw buffer address is %p", buffer);
 
-    result = doca_mmap_set_memrange(mmap, *buffer, buffer_len);
+    result = doca_mmap_set_memrange(*mmap, *buffer, buffer_len);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set memrange of memory map: %s", doca_error_get_descr(result));
-        free(*buffer);
+        goto free_buf;
         return result;
+    }
+    result = doca_mmap_add_dev(*mmap, dev);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to add device to mmap, error: %s", doca_error_get_descr(result));
+        goto free_buf;
     }
 
     /* Populate local buffer into memory map to allow access from DPU side after exporting */
-    result = doca_mmap_start(mmap);
+    result = doca_mmap_start(*mmap);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to populate memory map: %s", doca_error_get_descr(result));
-        free(*buffer);
+        goto free_buf;
     }
 
     return result;
+    doca_error_t tmp_result = result;
+
+free_buf:
+    if (*buffer)
+    {
+        free(*buffer);
+    }
+destroy_mmap:
+    tmp_result = doca_mmap_destroy(*mmap);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+        DOCA_LOG_ERR("Failed to destroy remote DOCA mmap: %s", doca_error_get_descr(tmp_result));
+    }
+    return tmp_result;
 }
 
 void print_buffer_hex(const void *buffer, size_t length)
