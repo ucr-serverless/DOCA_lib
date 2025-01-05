@@ -26,6 +26,11 @@
 #ifndef RDMA_COMMON_H_
 #define RDMA_COMMON_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -42,6 +47,11 @@
 #include <doca_sync_event.h>
 
 #include "common_doca.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 #define MEM_RANGE_LEN (4096)                 /* DOCA mmap memory range length */
 #define INVENTORY_NUM_INITIAL_ELEMENTS (16)  /* Number of DOCA inventory initial elements */
@@ -423,4 +433,7 @@ doca_error_t rdma_responder_send_data_to_rdma_requester(struct rdma_resources *r
  * This function is used for waiting for pressing anykey on the keyboard, purely for waiting/co-ordinating purpose.
  */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* RDMA_COMMON_H_ */

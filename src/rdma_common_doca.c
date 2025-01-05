@@ -910,7 +910,7 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
         goto free_memrange;
     }
 
-    if (cfg->is_host_export && (cfg->host_descriptor != NULL))
+    if (cfg->is_host_export == true && (cfg->host_descriptor != NULL))
     {
 
         DOCA_LOG_INFO("import from host");
