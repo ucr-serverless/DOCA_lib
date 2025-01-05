@@ -139,6 +139,8 @@ int main(int argc, char **argv)
 
     print_buffer_hex(cfg.host_descriptor, cfg.host_descriptor_size);
 
+    close(fd);
+    close(cfg.sock_fd);
     /* Start sample */
     result = rdma_multi_conn_receive(&cfg);
     if (result != DOCA_SUCCESS)
