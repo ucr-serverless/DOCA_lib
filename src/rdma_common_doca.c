@@ -1140,6 +1140,21 @@ doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdm
 {
     doca_error_t result = DOCA_SUCCESS, tmp_result;
 
+    if (resources->cfg->host_mmap != NULL)
+    {
+        result = doca_mmap_stop(resources->cfg->host_mmap);
+        if (result != DOCA_SUCCESS)
+            DOCA_LOG_ERR("Failed to stop DOCA remote mmap: %s", doca_error_get_descr(result));
+
+        tmp_result = doca_mmap_destroy(resources->cfg->host_mmap);
+        if (tmp_result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to destroy DOCA remote mmap: %s", doca_error_get_descr(tmp_result));
+            DOCA_ERROR_PROPAGATE(result, tmp_result);
+        }
+
+    }
+
     /* Stop and destroy remote mmap if exists */
     if (resources->remote_mmap != NULL)
     {
