@@ -47,6 +47,14 @@
 
 DOCA_LOG_REGISTER(COMMON);
 
+void wait_for_enter(void)
+{
+    int enter = 0;
+
+    /* Wait for enter */
+    while (enter != '\r' && enter != '\n')
+        enter = getchar();
+}
 void check_dev_cap(const struct doca_devinfo *devinfo)
 {
     doca_error_t result;

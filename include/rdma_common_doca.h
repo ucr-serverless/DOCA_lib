@@ -105,6 +105,7 @@ struct rdma_config
                                             **/
     int sock_fd;
     int sock_port;
+    bool is_host_export;
 };
 
 struct rdma_resources
@@ -417,6 +418,5 @@ doca_error_t rdma_responder_send_data_to_rdma_requester(struct rdma_resources *r
 /*
  * This function is used for waiting for pressing anykey on the keyboard, purely for waiting/co-ordinating purpose.
  */
-void wait_for_enter(void);
 
 #endif /* RDMA_COMMON_H_ */

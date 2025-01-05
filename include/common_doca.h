@@ -92,6 +92,7 @@ extern "C"
         struct doca_pe *pe;                 /* doca progress engine */
     };
 
+    void wait_for_enter(void);
     /*
      * check and print the device capabilities
      *
