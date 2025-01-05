@@ -2,6 +2,7 @@
 
 #include <doca_argp.h>
 #include <doca_log.h>
+#include <sys/types.h>
 
 #include "common_doca.h"
 #include "doca_error.h"
@@ -130,7 +131,7 @@ int main(int argc, char **argv)
     result = sock_send_buffer(export_descriptor_ptr, resources.export_descriptor_size, cfg.sock_fd);
     JUMP_ON_DOCA_ERROR(result, error);
 
-    result = sock_send_ptr((void*)resources.buf, cfg.sock_fd);
+    result = sock_send_ptr((uint64_t)resources.buf, cfg.sock_fd);
     JUMP_ON_DOCA_ERROR(result, error);
 
     DOCA_LOG_INFO("please press endter to contine");

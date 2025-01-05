@@ -212,9 +212,9 @@ void print_buffer_hex(const void *buffer, size_t length)
     printf("\n\n");
 }
 
-doca_error_t sock_send_ptr(void *ptr, int sock_fd)
+doca_error_t sock_send_ptr(uint64_t ptr, int sock_fd)
 {
-    if (sock_write(sock_fd, ptr, sizeof(uint64_t)) != sizeof(uint64_t))
+    if (sock_write(sock_fd, &ptr, sizeof(uint64_t)) != sizeof(uint64_t))
     {
         log_error("Error, send ptr size\n");
         return DOCA_ERROR_IO_FAILED;
