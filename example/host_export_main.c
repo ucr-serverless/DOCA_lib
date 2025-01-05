@@ -118,12 +118,12 @@ int main(int argc, char **argv)
 
     print_buffer_hex(export_descriptor_ptr, resources.export_descriptor_size);
 
-    char port[MAX_PORT_LEN];
-
-    int_to_port_str(cfg.sock_port, port, MAX_PORT_LEN);
+    /* char port[MAX_PORT_LEN]; */
+    /**/
+    /* int_to_port_str(cfg.sock_port, port, MAX_PORT_LEN); */
 
     log_info("start connect");
-    cfg.sock_fd = sock_create_connect(cfg.sock_ip, port);
+    cfg.sock_fd = sock_create_connect(cfg.sock_ip, DEFAULT_MMAP_EXPT_LISTEN_PORT);
     log_info("connection established: %d", cfg.sock_fd);
     JUMP_ON_FAILURE_CONDITION((cfg.sock_fd < 0), error, "create socket fail");
 
