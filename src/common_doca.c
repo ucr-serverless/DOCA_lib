@@ -211,9 +211,9 @@ void print_buffer_hex(const void *buffer, size_t length)
     printf("\n\n");
 }
 
-doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd)
+doca_error_t sock_send_buffer(const void *rdma_conn_descriptor, uint32_t descriptor_size, int sock_fd)
 {
-    if (sock_write(sock_fd, &descriptor_size, sizeof(size_t)) != sizeof(size_t))
+    if (sock_write(sock_fd, &descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
     {
         log_error("Error, send descriptor size\n");
         goto error;
@@ -237,11 +237,11 @@ error:
     return DOCA_ERROR_IO_FAILED;
 }
 
-doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
+doca_error_t sock_recv_buffer(void *rdma_conn_descriptor, uint32_t *descriptor_size, uint32_t descriptor_buf_size,
                               int sock_fd)
 {
 
-    if (sock_read(sock_fd, descriptor_size, sizeof(size_t)) != sizeof(size_t))
+    if (sock_read(sock_fd, descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
     {
         log_error("Error, recv descriptor size\n");
         goto error;
