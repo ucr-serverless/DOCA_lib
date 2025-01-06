@@ -283,32 +283,35 @@ static doca_error_t rdma_multi_conn_receive_prepare_and_submit_task(struct rdma_
 
         /* Include first_encountered_error in user data of task to be used in the callbacks */
         task_user_data.ptr = &(resources->first_encountered_error);
+        result = submit_recv_task(resources->rdma, dst_bufs[i], task_user_data, &rdma_receive_tasks[i]);
+        JUMP_ON_DOCA_ERROR(result, destroy_dst_buf);
         /* Allocate and construct RDMA receive task */
-        result =
-            doca_rdma_task_receive_allocate_init(resources->rdma, dst_bufs[i], task_user_data, &rdma_receive_tasks[i]);
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to allocate RDMA receive task [%d]: %s", i, doca_error_get_descr(result));
-            goto destroy_dst_buf;
-        }
+        /* result = */
+        /*     doca_rdma_task_receive_allocate_init(resources->rdma, dst_bufs[i], task_user_data,
+         * &rdma_receive_tasks[i]); */
+        /* if (result != DOCA_SUCCESS) */
+        /* { */
+        /*     DOCA_LOG_ERR("Failed to allocate RDMA receive task [%d]: %s", i, doca_error_get_descr(result)); */
+        /*     goto destroy_dst_buf; */
+        /* } */
 
         /* Submit RDMA receive task */
         DOCA_LOG_INFO("Submitting RDMA receive task [%d]", i);
         resources->num_remaining_tasks++;
-        result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_tasks[i]));
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to submit RDMA receive task [%d]: %s", i, doca_error_get_descr(result));
-            goto free_task;
-        }
-        DOCA_LOG_INFO("RDMA receive task [%d] successfully submitted", i);
+        /* result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_tasks[i])); */
+        /* if (result != DOCA_SUCCESS) */
+        /* { */
+        /*     DOCA_LOG_ERR("Failed to submit RDMA receive task [%d]: %s", i, doca_error_get_descr(result)); */
+        /*     goto free_task; */
+        /* } */
+        /* DOCA_LOG_INFO("RDMA receive task [%d] successfully submitted", i); */
     }
     DOCA_LOG_INFO("All RDMA receive tasks have been successfully submitted");
 
     return result;
 
-free_task:
-    doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_tasks[i]));
+/* free_task: */
+/*     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_tasks[i])); */
 destroy_dst_buf:
     tmp_result = doca_buf_dec_refcount(dst_bufs[i], NULL);
     if (tmp_result != DOCA_SUCCESS)
