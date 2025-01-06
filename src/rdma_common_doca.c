@@ -36,6 +36,7 @@
 #include <doca_log.h>
 
 #include "common_doca.h"
+#include "doca_rdma.h"
 #include "log.h"
 #include "rdma_common_doca.h"
 #include "sock_utils.h"
@@ -1953,4 +1954,59 @@ doca_error_t config_rdma_cm_callback_and_negotiation_task(struct rdma_resources 
     }
 
     return DOCA_SUCCESS;
+}
+
+doca_error_t submit_recv_task(struct doca_rdma *rdma, struct doca_buf *buf, union doca_data data,
+                              struct doca_rdma_task_receive **task)
+{
+    doca_error_t result;
+
+    result = doca_rdma_task_receive_allocate_init(rdma, buf, data, task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    /* Submit RDMA receive task */
+    DOCA_LOG_INFO("Submitting RDMA receive task");
+    result = doca_task_submit(doca_rdma_task_receive_as_task(*task));
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to submit RDMA receive task: %s", doca_error_get_descr(result));
+        goto free_task;
+    }
+    DOCA_LOG_INFO("RDMA receive task successfully submitted");
+
+    return DOCA_SUCCESS;
+free_task:
+    doca_task_free(doca_rdma_task_receive_as_task(*task));
+    return result;
+}
+doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_connection *connection, struct doca_buf *buf,
+                                  doca_be32_t imme, union doca_data task_data, struct doca_rdma_task_send_imm **task)
+{
+    doca_error_t result;
+
+    result = doca_rdma_task_send_imm_allocate_init(rdma, connection, buf, imme, task_data, task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    /* Submit RDMA receive task */
+    DOCA_LOG_INFO("Submitting RDMA receive task");
+    result = doca_task_submit(doca_rdma_task_send_imm_as_task(*task));
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to submit RDMA receive task: %s", doca_error_get_descr(result));
+        goto free_task;
+    }
+    DOCA_LOG_INFO("RDMA receive task successfully submitted");
+
+    return DOCA_SUCCESS;
+free_task:
+    doca_task_free(doca_rdma_task_send_imm_as_task(*task));
+    return result;
 }

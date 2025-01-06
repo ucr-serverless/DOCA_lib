@@ -270,8 +270,7 @@ static doca_error_t rdma_multi_conn_receive_prepare_and_submit_task(struct rdma_
     {
         /* Add dst buffer to DOCA buffer inventory */
         result = doca_buf_inventory_buf_get_by_addr(resources->buf_inventory, resources->cfg->host_mmap,
-                                                    (void*)resources->cfg->host_buf_addr, MAX_BUFF_SIZE,
-                                                    &dst_bufs[i]);
+                                                    (void *)resources->cfg->host_buf_addr, MAX_BUFF_SIZE, &dst_bufs[i]);
         /* result = doca_buf_inventory_buf_get_by_addr(resources->buf_inventory, resources->mmap, */
         /*                                             resources->mmap_memrange + i * MAX_BUFF_SIZE, MAX_BUFF_SIZE, */
         /*                                             &dst_bufs[i]); */

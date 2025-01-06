@@ -137,7 +137,6 @@ int main(int argc, char **argv)
     result = sock_recv_buffer(cfg.host_descriptor, &cfg.host_descriptor_size, MAX_RDMA_DESCRIPTOR_SZ, cfg.sock_fd);
     JUMP_ON_DOCA_ERROR(result, client_sock_error);
 
-    
     result = sock_recv_ptr(&cfg.host_buf_addr, cfg.sock_fd);
     JUMP_ON_DOCA_ERROR(result, client_sock_error);
 
@@ -145,7 +144,7 @@ int main(int argc, char **argv)
     JUMP_ON_DOCA_ERROR(result, client_sock_error);
     print_buffer_hex(cfg.host_descriptor, cfg.host_descriptor_size);
 
-    DOCA_LOG_INFO("received ptr addr: %p", (void*)cfg.host_buf_addr);
+    DOCA_LOG_INFO("received ptr addr: %p", (void *)cfg.host_buf_addr);
     DOCA_LOG_INFO("received ptr range: %lu", cfg.host_buf_range);
 
     close(fd);
