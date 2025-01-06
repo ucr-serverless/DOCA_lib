@@ -151,7 +151,7 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
     doca_error_t result = DOCA_SUCCESS, tmp_result;
     struct doca_rdma_connection *rdma_connection;
     struct doca_buf *dst_buf = NULL;
-    doca_be32_t imme;
+    uint32_t imme;
 
     DOCA_LOG_INFO("RDMA receive task was done successfully");
 
@@ -165,7 +165,7 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
         goto free_task;
     }
 
-    imme = doca_rdma_task_receive_get_result_immediate_data(rdma_receive_task);
+    imme = get_imme_from_task(rdma_receive_task);
 
     DOCA_LOG_INFO("the imme received is %d", imme);
     struct doca_rdma_task_send_imm *send_task = NULL;
