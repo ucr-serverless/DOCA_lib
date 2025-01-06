@@ -1984,11 +1984,13 @@ free_task:
     return result;
 }
 doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_connection *connection, struct doca_buf *buf,
-                                  doca_be32_t imme, union doca_data task_data, struct doca_rdma_task_send_imm **task)
+                                  uint32_t imme, union doca_data task_data, struct doca_rdma_task_send_imm **task)
 {
     doca_error_t result;
+    // convert to big endiane
+    doca_be32_t imm = htonl(imme);
 
-    result = doca_rdma_task_send_imm_allocate_init(rdma, connection, buf, imme, task_data, task);
+    result = doca_rdma_task_send_imm_allocate_init(rdma, connection, buf, imm, task_data, task);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
@@ -2009,4 +2011,9 @@ doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_conne
 free_task:
     doca_task_free(doca_rdma_task_send_imm_as_task(*task));
     return result;
+}
+
+uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task)
+{
+    return ntohl(doca_rdma_task_receive_get_result_immediate_data(recv_task));
 }

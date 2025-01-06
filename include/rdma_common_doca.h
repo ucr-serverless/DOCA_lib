@@ -114,7 +114,7 @@ extern "C"
         int sock_port;
         bool is_host_export;
         void *host_descriptor;
-        size_t host_descriptor_size;
+        uint32_t host_descriptor_size;
         uint64_t host_buf_addr;
         uint64_t host_buf_range;
         struct doca_mmap *host_mmap;
@@ -140,7 +140,7 @@ extern "C"
         const void *rdma_conn_descriptor;             /* DOCA RDMA connection descriptor */
         size_t rdma_conn_descriptor_size;             /* DOCA RDMA connection descriptor size */
         void *remote_rdma_conn_descriptor;            /* DOCA RDMA remote connection descriptor */
-        size_t remote_rdma_conn_descriptor_size;      /* DOCA RDMA remote connection descriptor size */
+        uint32_t remote_rdma_conn_descriptor_size;    /* DOCA RDMA remote connection descriptor size */
         void *remote_mmap_descriptor;                 /* DOCA RDMA remote memory map descriptor */
         size_t remote_mmap_descriptor_size;           /* DOCA RDMA remote memory map descriptor size */
         void *sync_event_descriptor;                  /* DOCA RDMA remote sync event descriptor */
@@ -434,8 +434,10 @@ extern "C"
     doca_error_t submit_recv_task(struct doca_rdma *rdma, struct doca_buf *buf, union doca_data data,
                                   struct doca_rdma_task_receive **task);
     doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_connection *connection,
-                                      struct doca_buf *buf, doca_be32_t imme, union doca_data task_data,
+                                      struct doca_buf *buf, uint32_t imme, union doca_data task_data,
                                       struct doca_rdma_task_send_imm **task);
+    /* can only be called in success recv_task callback */
+    uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task);
 #ifdef __cplusplus
 }
 #endif

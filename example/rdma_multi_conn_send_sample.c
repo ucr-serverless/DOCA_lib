@@ -28,11 +28,13 @@
 #include <doca_ctx.h>
 #include <doca_error.h>
 #include <doca_log.h>
+#include <netinet/in.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 
 #include "common_doca.h"
 #include "doca_rdma.h"
+#include "doca_types.h"
 #include "log.h"
 #include "rdma_common_doca.h"
 #include "sock_utils.h"
@@ -51,40 +53,42 @@ DOCA_LOG_REGISTER(RDMA_MULI_CONN_SEND::SAMPLE);
  * @resources [in/out]: RDMA resources
  * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
  */
-static doca_error_t write_read_connection(struct rdma_config *cfg, struct rdma_resources *resources,
-                                          uint32_t connection_id)
-{
-    doca_error_t result = DOCA_SUCCESS;
-    char tmp_file_path[MAX_ARG_SIZE * 2];
-
-    /* Write the RDMA connection details */
-    memset(tmp_file_path, 0, MAX_ARG_SIZE + 4);
-    sprintf(tmp_file_path, "%s-%04u", cfg->local_connection_desc_path, connection_id);
-    result = write_file(tmp_file_path, (char *)resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to write the RDMA connection details: %s", doca_error_get_descr(result));
-        return result;
-    }
-
-    DOCA_LOG_INFO("You can now copy %s to the receiver", tmp_file_path);
-
-    memset(tmp_file_path, 0, MAX_ARG_SIZE + 4);
-    sprintf(tmp_file_path, "%s-%04u", cfg->remote_connection_desc_path, connection_id);
-    DOCA_LOG_INFO("Please copy %s from the receiver and then press enter after pressing enter in the receiver side",
-                  tmp_file_path);
-
-    /* Wait for enter */
-    wait_for_enter();
-
-    /* Read the remote RDMA connection details */
-    result = read_file(tmp_file_path, (char **)&resources->remote_rdma_conn_descriptor,
-                       &resources->remote_rdma_conn_descriptor_size);
-    if (result != DOCA_SUCCESS)
-        DOCA_LOG_ERR("Failed to read the remote RDMA connection details: %s", doca_error_get_descr(result));
-
-    return result;
-}
+/* static doca_error_t write_read_connection(struct rdma_config *cfg, struct rdma_resources *resources, */
+/*                                           uint32_t connection_id) */
+/* { */
+/*     doca_error_t result = DOCA_SUCCESS; */
+/*     char tmp_file_path[MAX_ARG_SIZE * 2]; */
+/**/
+/*     /* Write the RDMA connection details */
+/*     memset(tmp_file_path, 0, MAX_ARG_SIZE + 4); */
+/*     sprintf(tmp_file_path, "%s-%04u", cfg->local_connection_desc_path, connection_id); */
+/*     result = write_file(tmp_file_path, (char *)resources->rdma_conn_descriptor,
+ * resources->rdma_conn_descriptor_size); */
+/*     if (result != DOCA_SUCCESS) */
+/*     { */
+/*         DOCA_LOG_ERR("Failed to write the RDMA connection details: %s", doca_error_get_descr(result)); */
+/*         return result; */
+/*     } */
+/**/
+/*     DOCA_LOG_INFO("You can now copy %s to the receiver", tmp_file_path); */
+/**/
+/*     memset(tmp_file_path, 0, MAX_ARG_SIZE + 4); */
+/*     sprintf(tmp_file_path, "%s-%04u", cfg->remote_connection_desc_path, connection_id); */
+/*     DOCA_LOG_INFO("Please copy %s from the receiver and then press enter after pressing enter in the receiver side",
+ */
+/*                   tmp_file_path); */
+/**/
+/*     /* Wait for enter */
+/*     wait_for_enter(); */
+/**/
+/*     /* Read the remote RDMA connection details */
+/*     result = read_file(tmp_file_path, (char **)&resources->remote_rdma_conn_descriptor, */
+/*                        &resources->remote_rdma_conn_descriptor_size); */
+/*     if (result != DOCA_SUCCESS) */
+/*         DOCA_LOG_ERR("Failed to read the remote RDMA connection details: %s", doca_error_get_descr(result)); */
+/**/
+/*     return result; */
+/* } */
 
 /*
  * RDMA send task completed callback
@@ -103,14 +107,14 @@ static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send_i
 
     DOCA_LOG_INFO("RDMA send task was done successfully");
 
-    src_buf = (struct doca_buf *)doca_rdma_task_send_get_src_buf(rdma_send_task);
+    src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(rdma_send_task);
     tmp_result = doca_buf_dec_refcount(src_buf, NULL);
     if (tmp_result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(tmp_result));
         DOCA_ERROR_PROPAGATE(result, tmp_result);
     }
-    doca_task_free(doca_rdma_task_send_as_task(rdma_send_task));
+    doca_task_free(doca_rdma_task_send_imm_as_task(rdma_send_task));
 
     /* Update that an error was encountered, if any */
     DOCA_ERROR_PROPAGATE(*first_encountered_error, tmp_result);
@@ -132,7 +136,7 @@ static void rdma_multi_conn_send_error_callback(struct doca_rdma_task_send_imm *
                                                 union doca_data task_user_data, union doca_data ctx_user_data)
 {
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
-    struct doca_task *task = doca_rdma_task_send_as_task(rdma_send_task);
+    struct doca_task *task = doca_rdma_task_send_imm_as_task(rdma_send_task);
     doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
     doca_error_t result;
 
@@ -269,31 +273,36 @@ static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_res
         /* Include first_encountered_error in user data of task to be used in the callbacks */
         task_user_data.ptr = &(resources->first_encountered_error);
         /* Allocate and construct RDMA send task */
-        result = doca_rdma_task_send_imm_allocate_init(resources->rdma, resources->connections[i], src_bufs[i],
-                                                       EXAMPLE_IMME, task_user_data, &rdma_send_tasks[i]);
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to allocate RDMA send task [%d]: %s", i, doca_error_get_descr(result));
-            goto destroy_src_buf;
-        }
 
-        /* Submit RDMA send task */
-        DOCA_LOG_INFO("Submitting RDMA send task [%d] that sends \"%s\" to receiver with imm value %d, sender's "
-                      "rdma_connection address [%p]",
-                      i, resources->cfg->send_string, EXAMPLE_IMME, resources->connections[i]);
+        uint32_t test_imm = 32;
+        DOCA_LOG_INFO("the send number is %d", test_imm);
+        result = submit_send_imm_task(resources->rdma, resources->connections[i], src_bufs[i], test_imm, task_user_data,
+                                      &rdma_send_tasks[i]);
+        JUMP_ON_DOCA_ERROR(result, destroy_src_buf);
+        /* result = doca_rdma_task_send_imm_allocate_init(resources->rdma, resources->connections[i], src_bufs[i], */
+        /*                                                EXAMPLE_IMME, task_user_data, &rdma_send_tasks[i]); */
+        /* if (result != DOCA_SUCCESS) */
+        /* { */
+        /*     DOCA_LOG_ERR("Failed to allocate RDMA send task [%d]: %s", i, doca_error_get_descr(result)); */
+        /*     goto destroy_src_buf; */
+        /* } */
+
+        /* DOCA_LOG_INFO("Submitting RDMA send task [%d] that sends \"%s\" to receiver with imm value %d, sender's " */
+        /*               "rdma_connection address [%p]", */
+        /*               i, resources->cfg->send_string, EXAMPLE_IMME, resources->connections[i]); */
         resources->num_remaining_tasks++;
-        result = doca_task_submit(doca_rdma_task_send_imm_as_task(rdma_send_tasks[i]));
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to submit RDMA send task [%d]: %s", i, doca_error_get_descr(result));
-            goto free_task;
-        }
+        /* result = doca_task_submit(doca_rdma_task_send_imm_as_task(rdma_send_tasks[i])); */
+        /* if (result != DOCA_SUCCESS) */
+        /* { */
+        /*     DOCA_LOG_ERR("Failed to submit RDMA send task [%d]: %s", i, doca_error_get_descr(result)); */
+        /*     goto free_task; */
+        /* } */
     }
 
     return result;
 
-free_task:
-    doca_task_free(doca_rdma_task_send_imm_as_task(rdma_send_tasks[i]));
+/* free_task: */
+/*     doca_task_free(doca_rdma_task_send_imm_as_task(rdma_send_tasks[i])); */
 destroy_src_buf:
     tmp_result = doca_buf_dec_refcount(src_bufs[i], NULL);
     if (tmp_result != DOCA_SUCCESS)
