@@ -31,6 +31,7 @@
 #include <doca_log.h>
 
 #include "common_doca.h"
+#include "doca_rdma.h"
 #include "doca_types.h"
 #include "log.h"
 #include "rdma_common_doca.h"
@@ -84,6 +85,56 @@ static doca_error_t write_read_connection(struct rdma_config *cfg, struct rdma_r
     return result;
 }
 
+static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send_imm *rdma_send_task,
+                                                    union doca_data task_user_data, union doca_data ctx_user_data)
+{
+    struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
+    doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
+    struct doca_buf *src_buf = NULL;
+    doca_error_t result = DOCA_SUCCESS, tmp_result;
+
+    DOCA_LOG_INFO("RDMA send task was done successfully");
+
+    src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(rdma_send_task);
+    tmp_result = doca_buf_dec_refcount(src_buf, NULL);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+    doca_task_free(doca_rdma_task_send_imm_as_task(rdma_send_task));
+
+    /* Update that an error was encountered, if any */
+    DOCA_ERROR_PROPAGATE(*first_encountered_error, tmp_result);
+
+    resources->num_remaining_tasks--;
+    /* Stop context once all tasks are completed */
+    if (resources->num_remaining_tasks == 0)
+        (void)doca_ctx_stop(resources->rdma_ctx);
+}
+static void rdma_multi_conn_send_error_callback(struct doca_rdma_task_send_imm *rdma_send_task,
+                                                union doca_data task_user_data, union doca_data ctx_user_data)
+{
+    struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
+    struct doca_task *task = doca_rdma_task_send_imm_as_task(rdma_send_task);
+    doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
+    doca_error_t result;
+
+    /* Update that an error was encountered */
+    result = doca_task_get_status(task);
+    DOCA_ERROR_PROPAGATE(*first_encountered_error, result);
+    DOCA_LOG_ERR("RDMA send task failed: %s", doca_error_get_descr(result));
+
+    doca_task_free(task);
+    result = doca_buf_dec_refcount(resources->src_buf, NULL);
+    if (result != DOCA_SUCCESS)
+        DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(result));
+
+    resources->num_remaining_tasks--;
+    /* Stop context once all tasks are completed */
+    if (resources->num_remaining_tasks == 0)
+        (void)doca_ctx_stop(resources->rdma_ctx);
+}
 /*
  * RDMA receive task completed callback
  *
@@ -98,7 +149,7 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
     void *dst_buf_data = NULL;
     doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
     doca_error_t result = DOCA_SUCCESS, tmp_result;
-    const struct doca_rdma_connection *rdma_connection;
+    struct doca_rdma_connection *rdma_connection;
     struct doca_buf *dst_buf = NULL;
     uint32_t imme;
 
@@ -129,13 +180,21 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
     DOCA_LOG_INFO("Got from sender: \"%s\", sender's rdma_connection address [%p]", (char *)dst_buf_data,
                   rdma_connection);
 
-free_task:
+    struct doca_rdma_task_send_imm *send_task = NULL;
+
+    tmp_result = submit_send_imm_task(resources->rdma, rdma_connection, dst_buf, 33, task_user_data, &send_task);
+    JUMP_ON_DOCA_ERROR(tmp_result, free_send_task);
+    DOCA_LOG_INFO("send task submitted");
+    goto free_task;
+
+free_send_task:
     tmp_result = doca_buf_dec_refcount(dst_buf, NULL);
     if (tmp_result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to decrease dst_buf count: %s", doca_error_get_descr(tmp_result));
         DOCA_ERROR_PROPAGATE(result, tmp_result);
     }
+free_task:
     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_task));
 
     /* Update that an error was encountered, if any */
@@ -290,7 +349,7 @@ static doca_error_t rdma_multi_conn_receive_prepare_and_submit_task(struct rdma_
 
         /* Submit RDMA receive task */
         DOCA_LOG_INFO("Submitting RDMA receive task [%d]", i);
-        resources->num_remaining_tasks++;
+        resources->num_remaining_tasks += 2;
         result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_tasks[i]));
         if (result != DOCA_SUCCESS)
         {
@@ -435,6 +494,14 @@ doca_error_t rdma_multi_conn_receive(struct rdma_config *cfg)
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set configurations for RDMA receive task: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+    result =
+        doca_rdma_task_send_imm_set_conf(resources.rdma, rdma_multi_conn_send_completed_callback,
+                                         rdma_multi_conn_send_error_callback, NUM_RDMA_TASKS * cfg->num_connections);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set configurations for RDMA send task: %s", doca_error_get_descr(result));
         goto destroy_resources;
     }
 

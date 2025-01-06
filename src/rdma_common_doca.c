@@ -1998,14 +1998,14 @@ doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_conne
     }
 
     /* Submit RDMA receive task */
-    DOCA_LOG_INFO("Submitting RDMA receive task");
+    DOCA_LOG_INFO("Submitting RDMA send imm task");
     result = doca_task_submit(doca_rdma_task_send_imm_as_task(*task));
     if (result != DOCA_SUCCESS)
     {
-        DOCA_LOG_ERR("Failed to submit RDMA receive task: %s", doca_error_get_descr(result));
+        DOCA_LOG_ERR("Failed to submit RDMA send imm task: %s", doca_error_get_descr(result));
         goto free_task;
     }
-    DOCA_LOG_INFO("RDMA receive task successfully submitted");
+    DOCA_LOG_INFO("RDMA send imm task successfully submitted");
 
     return DOCA_SUCCESS;
 free_task:
