@@ -13,6 +13,7 @@ cflags = []
 doca_dep = dependency('doca-common', required: true)
 doca_argp_dep = dependency('doca-argp', required: true)
 doca_rdma_dep = dependency('doca-rdma', required: true)
+doca_dma_dep = dependency('doca-dma', required: true)
 
 doca_inc_dir = '/opt/mellanox/doca/include'
 
@@ -45,6 +46,8 @@ doca_inc = [ doca_inc_dir ]
 bin_programs = [
   ['rdma_send', ['example/rdma_multi_conn_send_main.c', 'example/rdma_multi_conn_send_sample.c']],
   ['rdma_receive', ['example/rdma_multi_conn_receive_main.c', 'example/rdma_multi_conn_receive_sample.c']],
+  ['rdma_receive_export_host', ['example/rdma_multi_conn_receive_export_host_main.c', 'example/rdma_multi_conn_receive_export_host.c']],
+  ['host_export', ['example/host_export_main.c']],
 ]
 
 libDOCA_lib = static_library(
@@ -71,7 +74,7 @@ foreach prog : bin_programs
     sources: prog[1] + src_files,
     include_directories: inc_dirs + doca_inc,
     c_args: cflags,
-    dependencies: [doca_dep, doca_argp_dep, doca_rdma_dep],
+    dependencies: [doca_dep, doca_argp_dep, doca_rdma_dep, doca_dma_dep],
     install: true
   )
 endforeach

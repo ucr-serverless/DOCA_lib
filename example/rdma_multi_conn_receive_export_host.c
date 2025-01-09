@@ -31,7 +31,6 @@
 #include <doca_log.h>
 
 #include "common_doca.h"
-#include "doca_rdma.h"
 #include "doca_types.h"
 #include "log.h"
 #include "rdma_common_doca.h"
@@ -40,7 +39,7 @@
 
 #define MAX_BUFF_SIZE (256) /* Maximum DOCA buffer size */
 
-DOCA_LOG_REGISTER(RDMA_MULTI_CONN_RECEIVE::SAMPLE);
+DOCA_LOG_REGISTER(RDMA_MULTI_CONN_RECEIVE::EXPORT_HOST);
 
 /*
  * Write the connection details for the sender to read, and read the connection details of the sender
@@ -112,6 +111,7 @@ static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send_i
     if (resources->num_remaining_tasks == 0)
         (void)doca_ctx_stop(resources->rdma_ctx);
 }
+
 static void rdma_multi_conn_send_error_callback(struct doca_rdma_task_send_imm *rdma_send_task,
                                                 union doca_data task_user_data, union doca_data ctx_user_data)
 {
@@ -167,26 +167,24 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
 
     imme = get_imme_from_task(rdma_receive_task);
 
-    DOCA_LOG_INFO("the imme received is %u", imme);
-
-    /* Check if dst_buf_data is null terminated and of legal size */
-    if (strnlen(dst_buf_data, MAX_BUFF_SIZE) == MAX_BUFF_SIZE)
-    {
-        DOCA_LOG_ERR("The message that was received from sender exceeds buffer size %d", MAX_BUFF_SIZE);
-        result = DOCA_ERROR_INVALID_VALUE;
-        goto free_task;
-    }
-
-    DOCA_LOG_INFO("Got from sender: \"%s\", sender's rdma_connection address [%p]", (char *)dst_buf_data,
-                  rdma_connection);
-
+    DOCA_LOG_INFO("the imme received is %d", imme);
     struct doca_rdma_task_send_imm *send_task = NULL;
 
     tmp_result = submit_send_imm_task(resources->rdma, rdma_connection, dst_buf, 33, task_user_data, &send_task);
-    JUMP_ON_DOCA_ERROR(tmp_result, free_send_task);
-    DOCA_LOG_INFO("send task submitted");
+    JUMP_ON_DOCA_ERROR(result, free_send_task);
     goto free_task;
 
+    // remove buf access operation(core dump)
+    /* Check if dst_buf_data is null terminated and of legal size */
+    /* if (strnlen(dst_buf_data, MAX_BUFF_SIZE) == MAX_BUFF_SIZE) */
+    /* { */
+    /*     DOCA_LOG_ERR("The message that was received from sender exceeds buffer size %d", MAX_BUFF_SIZE); */
+    /*     result = DOCA_ERROR_INVALID_VALUE; */
+    /*     goto free_task; */
+    /* } */
+    /**/
+    /* DOCA_LOG_INFO("Got from sender: \"%s\", sender's rdma_connection address [%p]", (char *)dst_buf_data, */
+    /*               rdma_connection); */
 free_send_task:
     tmp_result = doca_buf_dec_refcount(dst_buf, NULL);
     if (tmp_result != DOCA_SUCCESS)
@@ -317,6 +315,7 @@ static doca_error_t rdma_multi_conn_receive_export_and_connect(struct rdma_resou
  */
 static doca_error_t rdma_multi_conn_receive_prepare_and_submit_task(struct rdma_resources *resources)
 {
+    DOCA_LOG_INFO("inside export host");
     struct doca_rdma_task_receive *rdma_receive_tasks[MAX_NUM_CONNECTIONS] = {0};
     struct doca_buf *dst_bufs[MAX_NUM_CONNECTIONS] = {0};
     union doca_data task_user_data = {0};
@@ -326,9 +325,11 @@ static doca_error_t rdma_multi_conn_receive_prepare_and_submit_task(struct rdma_
     for (i = 0; i < resources->cfg->num_connections; i++)
     {
         /* Add dst buffer to DOCA buffer inventory */
-        result = doca_buf_inventory_buf_get_by_addr(resources->buf_inventory, resources->mmap,
-                                                    resources->mmap_memrange + i * MAX_BUFF_SIZE, MAX_BUFF_SIZE,
-                                                    &dst_bufs[i]);
+        result = doca_buf_inventory_buf_get_by_addr(resources->buf_inventory, resources->cfg->host_mmap,
+                                                    (void *)resources->cfg->host_buf_addr, MAX_BUFF_SIZE, &dst_bufs[i]);
+        /* result = doca_buf_inventory_buf_get_by_addr(resources->buf_inventory, resources->mmap, */
+        /*                                             resources->mmap_memrange + i * MAX_BUFF_SIZE, MAX_BUFF_SIZE, */
+        /*                                             &dst_bufs[i]); */
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to allocate DOCA buffer [%d] to DOCA buffer inventory: %s", i,
@@ -338,32 +339,35 @@ static doca_error_t rdma_multi_conn_receive_prepare_and_submit_task(struct rdma_
 
         /* Include first_encountered_error in user data of task to be used in the callbacks */
         task_user_data.ptr = &(resources->first_encountered_error);
+        result = submit_recv_task(resources->rdma, dst_bufs[i], task_user_data, &rdma_receive_tasks[i]);
+        JUMP_ON_DOCA_ERROR(result, destroy_dst_buf);
         /* Allocate and construct RDMA receive task */
-        result =
-            doca_rdma_task_receive_allocate_init(resources->rdma, dst_bufs[i], task_user_data, &rdma_receive_tasks[i]);
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to allocate RDMA receive task [%d]: %s", i, doca_error_get_descr(result));
-            goto destroy_dst_buf;
-        }
+        /* result = */
+        /*     doca_rdma_task_receive_allocate_init(resources->rdma, dst_bufs[i], task_user_data,
+         * &rdma_receive_tasks[i]); */
+        /* if (result != DOCA_SUCCESS) */
+        /* { */
+        /*     DOCA_LOG_ERR("Failed to allocate RDMA receive task [%d]: %s", i, doca_error_get_descr(result)); */
+        /*     goto destroy_dst_buf; */
+        /* } */
 
         /* Submit RDMA receive task */
         DOCA_LOG_INFO("Submitting RDMA receive task [%d]", i);
         resources->num_remaining_tasks += 2;
-        result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_tasks[i]));
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to submit RDMA receive task [%d]: %s", i, doca_error_get_descr(result));
-            goto free_task;
-        }
-        DOCA_LOG_INFO("RDMA receive task [%d] successfully submitted", i);
+        /* result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_tasks[i])); */
+        /* if (result != DOCA_SUCCESS) */
+        /* { */
+        /*     DOCA_LOG_ERR("Failed to submit RDMA receive task [%d]: %s", i, doca_error_get_descr(result)); */
+        /*     goto free_task; */
+        /* } */
+        /* DOCA_LOG_INFO("RDMA receive task [%d] successfully submitted", i); */
     }
     DOCA_LOG_INFO("All RDMA receive tasks have been successfully submitted");
 
     return result;
 
-free_task:
-    doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_tasks[i]));
+/* free_task: */
+/*     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_tasks[i])); */
 destroy_dst_buf:
     tmp_result = doca_buf_dec_refcount(dst_bufs[i], NULL);
     if (tmp_result != DOCA_SUCCESS)

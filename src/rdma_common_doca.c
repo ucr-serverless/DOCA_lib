@@ -35,67 +35,33 @@
 #include <doca_error.h>
 #include <doca_log.h>
 
+#include "common_doca.h"
+#include "doca_rdma.h"
 #include "log.h"
 #include "rdma_common_doca.h"
 #include "sock_utils.h"
 
 DOCA_LOG_REGISTER(RDMA::COMMON);
 
-doca_error_t send_rdma_conn_descriptor(const void *rdma_conn_descriptor, size_t descriptor_size, int sock_fd)
+doca_error_t check_rdma_send_recv(const struct doca_devinfo *devinfo)
 {
-    if (sock_write(sock_fd, &descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
+    doca_error_t result;
+    result = doca_rdma_cap_task_receive_is_supported(devinfo);
+    if (result != DOCA_SUCCESS)
     {
-        log_error("Error, send descriptor size\n");
-        goto error;
+        DOCA_LOG_ERR("rdma_receive not supportted");
+        return result;
     }
-    ssize_t write_len = sock_write(sock_fd, rdma_conn_descriptor, descriptor_size);
-    log_info("read: %u, descriptor_size: %u", write_len, descriptor_size);
-    if (write_len < 0)
-    {
-        goto error;
-    }
-    if (write_len != descriptor_size)
-    {
-        log_error("Error, send descriptor\n");
-        goto error;
-    }
+    DOCA_LOG_INFO("rdma receive supportted");
 
+    result = doca_rdma_cap_task_send_is_supported(devinfo);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("rdma send not supportted");
+        return result;
+    }
+    DOCA_LOG_INFO("rdma send supportted");
     return DOCA_SUCCESS;
-
-error:
-    log_error("Error, send descriptor");
-    return DOCA_ERROR_IO_FAILED;
-}
-
-doca_error_t recv_rdma_conn_descriptor(void *rdma_conn_descriptor, size_t *descriptor_size, size_t descriptor_buf_size,
-                                       int sock_fd)
-{
-
-    if (sock_read(sock_fd, descriptor_size, sizeof(uint32_t)) != sizeof(uint32_t))
-    {
-        log_error("Error, recv descriptor size\n");
-        goto error;
-    }
-    if (descriptor_buf_size < *descriptor_size)
-    {
-        log_fatal("receive buffer is smaller then the incoming data");
-        goto error;
-    }
-    ssize_t read_len = sock_read(sock_fd, rdma_conn_descriptor, *descriptor_size);
-    if (read_len < 0)
-    {
-        goto error;
-    }
-    if (read_len != *descriptor_size)
-    {
-        log_error("Error, recv descriptor\n");
-        goto error;
-    }
-    return DOCA_SUCCESS;
-
-error:
-    log_error("Error, recv descriptor");
-    return DOCA_ERROR_IO_FAILED;
 }
 
 /*
@@ -197,6 +163,13 @@ static doca_error_t write_string_callback(void *param, void *config)
     return DOCA_SUCCESS;
 }
 
+static doca_error_t bool_callback(void *param, void *config)
+{
+    struct rdma_config *app_cfg = (struct rdma_config *)config;
+    app_cfg->is_host_export = *(bool *)param;
+
+    return DOCA_SUCCESS;
+}
 /*
  * ARGP Callback - Handle exported descriptor file path parameter
  *
@@ -705,6 +678,26 @@ doca_error_t register_rdma_common_params(void)
     struct doca_argp_param *sock_port_param;
     struct doca_argp_param *sock_ip_param;
     struct doca_argp_param *transport_type_param;
+    struct doca_argp_param *is_host_export_param;
+
+    /* Create and register device param */
+    result = doca_argp_param_create(&is_host_export_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(is_host_export_param, "he");
+    doca_argp_param_set_long_name(is_host_export_param, "host_export");
+    doca_argp_param_set_description(is_host_export_param, "flags on whether to accecpt host exported mmap");
+    doca_argp_param_set_callback(is_host_export_param, bool_callback);
+    doca_argp_param_set_type(is_host_export_param, DOCA_ARGP_TYPE_BOOLEAN);
+    result = doca_argp_register_param(is_host_export_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
 
     /* Create and register device param */
     result = doca_argp_param_create(&device_param);
@@ -872,62 +865,9 @@ doca_error_t register_rdma_common_params(void)
     return register_rdma_cm_params();
 }
 
-/*
- * Open DOCA device
- *
- * @device_name [in]: The name of the wanted IB device (could be empty string)
- * @func [in]: Function to check if a given device is capable of executing some task
- * @doca_device [out]: An allocated DOCA device on success and NULL otherwise
- * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
- */
-static doca_error_t open_doca_device(const char *device_name, task_check func, struct doca_dev **doca_device)
-{
-    struct doca_devinfo **dev_list;
-    uint32_t nb_devs = 0;
-    doca_error_t result;
-    char ibdev_name[DOCA_DEVINFO_IBDEV_NAME_SIZE] = {0};
-    uint32_t i = 0;
-
-    result = doca_devinfo_create_list(&dev_list, &nb_devs);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to load DOCA devices list: %s", doca_error_get_descr(result));
-        return result;
-    }
-
-    /* Search device with same dev name*/
-    for (i = 0; i < nb_devs; i++)
-    {
-        result = doca_devinfo_get_ibdev_name(dev_list[i], ibdev_name, sizeof(ibdev_name));
-        if (result != DOCA_SUCCESS ||
-            (strlen(device_name) != 0 && strncmp(device_name, ibdev_name, DOCA_DEVINFO_IBDEV_NAME_SIZE) != 0))
-            continue;
-        /* If any special capabilities are needed */
-        if (func != NULL && func(dev_list[i]) != DOCA_SUCCESS)
-            continue;
-        result = doca_dev_open(dev_list[i], doca_device);
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to open DOCA device: %s", doca_error_get_descr(result));
-            goto out;
-        }
-        break;
-    }
-
-out:
-    doca_devinfo_destroy_list(dev_list);
-
-    if (*doca_device == NULL)
-    {
-        DOCA_LOG_ERR("Couldn't get DOCA device");
-        return DOCA_ERROR_NOT_FOUND;
-    }
-
-    return result;
-}
-
 doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mmap_permissions,
-                                     const uint32_t rdma_permissions, task_check func, struct rdma_resources *resources)
+                                     const uint32_t rdma_permissions, tasks_check func,
+                                     struct rdma_resources *resources)
 {
     doca_error_t result, tmp_result;
 
@@ -946,7 +886,7 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     }
 
     /* Open DOCA device */
-    result = open_doca_device(cfg->device_name, func, &(resources->doca_device));
+    result = open_doca_device_with_ibdev_str(cfg->device_name, func, &(resources->doca_device));
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to open DOCA device: %s", doca_error_get_descr(result));
@@ -969,6 +909,17 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     {
         DOCA_LOG_ERR("Failed to create DOCA mmap: %s", doca_error_get_descr(result));
         goto free_memrange;
+    }
+
+    if (cfg->is_host_export == true && (cfg->host_descriptor != NULL))
+    {
+
+        DOCA_LOG_INFO("import from host");
+        result = doca_mmap_create_from_export(NULL, (const void *)cfg->host_descriptor, cfg->host_descriptor_size,
+                                              resources->doca_device, &cfg->host_mmap);
+
+        JUMP_ON_DOCA_ERROR(result, destroy_pe);
+        DOCA_LOG_INFO("import buffer success");
     }
 
     result = doca_pe_create(&(resources->pe));
@@ -1189,6 +1140,20 @@ static doca_error_t destroy_rdma_cm_resources(struct rdma_resources *resources)
 doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg)
 {
     doca_error_t result = DOCA_SUCCESS, tmp_result;
+
+    if (resources->cfg->host_mmap != NULL)
+    {
+        result = doca_mmap_stop(resources->cfg->host_mmap);
+        if (result != DOCA_SUCCESS)
+            DOCA_LOG_ERR("Failed to stop DOCA remote mmap: %s", doca_error_get_descr(result));
+
+        tmp_result = doca_mmap_destroy(resources->cfg->host_mmap);
+        if (tmp_result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to destroy DOCA remote mmap: %s", doca_error_get_descr(tmp_result));
+            DOCA_ERROR_PROPAGATE(result, tmp_result);
+        }
+    }
 
     /* Stop and destroy remote mmap if exists */
     if (resources->remote_mmap != NULL)
@@ -1875,6 +1840,10 @@ doca_error_t set_default_config_value(struct rdma_config *cfg)
     cfg->cm_port = DEFAULT_RDMA_CM_PORT;
     cfg->cm_addr_type = DOCA_RDMA_ADDR_TYPE_IPv4;
     memset(cfg->cm_addr, 0, SERVER_ADDR_LEN);
+    cfg->is_host_export = false;
+    cfg->host_descriptor = NULL;
+    cfg->host_descriptor_size = 0;
+    cfg->host_mmap = NULL;
 
     return DOCA_SUCCESS;
 }
@@ -1987,11 +1956,64 @@ doca_error_t config_rdma_cm_callback_and_negotiation_task(struct rdma_resources 
     return DOCA_SUCCESS;
 }
 
-void wait_for_enter(void)
+doca_error_t submit_recv_task(struct doca_rdma *rdma, struct doca_buf *buf, union doca_data data,
+                              struct doca_rdma_task_receive **task)
 {
-    int enter = 0;
+    doca_error_t result;
 
-    /* Wait for enter */
-    while (enter != '\r' && enter != '\n')
-        enter = getchar();
+    result = doca_rdma_task_receive_allocate_init(rdma, buf, data, task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    /* Submit RDMA receive task */
+    DOCA_LOG_INFO("Submitting RDMA receive task");
+    result = doca_task_submit(doca_rdma_task_receive_as_task(*task));
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to submit RDMA receive task: %s", doca_error_get_descr(result));
+        goto free_task;
+    }
+    DOCA_LOG_INFO("RDMA receive task successfully submitted");
+
+    return DOCA_SUCCESS;
+free_task:
+    doca_task_free(doca_rdma_task_receive_as_task(*task));
+    return result;
+}
+doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_connection *connection, struct doca_buf *buf,
+                                  uint32_t imme, union doca_data task_data, struct doca_rdma_task_send_imm **task)
+{
+    doca_error_t result;
+    // convert to big endiane
+    doca_be32_t imm = htonl(imme);
+
+    result = doca_rdma_task_send_imm_allocate_init(rdma, connection, buf, imm, task_data, task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    /* Submit RDMA receive task */
+    DOCA_LOG_INFO("Submitting RDMA send imm task");
+    result = doca_task_submit(doca_rdma_task_send_imm_as_task(*task));
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to submit RDMA send imm task: %s", doca_error_get_descr(result));
+        goto free_task;
+    }
+    DOCA_LOG_INFO("RDMA send imm task successfully submitted");
+
+    return DOCA_SUCCESS;
+free_task:
+    doca_task_free(doca_rdma_task_send_imm_as_task(*task));
+    return result;
+}
+
+uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task)
+{
+    return ntohl(doca_rdma_task_receive_get_result_immediate_data(recv_task));
 }
