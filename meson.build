@@ -41,6 +41,7 @@ src_files = files(
   'src/utils_doca.c',
   'src/comch_utils.c',
   'src/comch_ctrl_path_common.c',
+  'src/pack.c',
 
   )
 inc_dirs = [ 'include', 'utils' ]
