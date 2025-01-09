@@ -42,32 +42,36 @@
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y)) /* Return the maximum value between X and Y */
 #endif
 
-/*
- * Prints DOCA SDK and runtime versions
- *
- * @param [in]: unused
- * @doca_config [in]: unused
- * @return: the function exit with EXIT_SUCCESS
- */
-doca_error_t sdk_version_callback(void *param, void *doca_config);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+    /*
+     * Prints DOCA SDK and runtime versions
+     *
+     * @param [in]: unused
+     * @doca_config [in]: unused
+     * @return: the function exit with EXIT_SUCCESS
+     */
+    doca_error_t sdk_version_callback(void *param, void *doca_config);
 
-/*
- * Read the entire content of a file into a buffer
- *
- * @path [in]: file path
- * @out_bytes [out]: file data buffer
- * @out_bytes_len [out]: file length
- * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
- */
-doca_error_t read_file(char const *path, char **out_bytes, size_t *out_bytes_len);
+    /*
+     * Read the entire content of a file into a buffer
+     *
+     * @path [in]: file path
+     * @out_bytes [out]: file data buffer
+     * @out_bytes_len [out]: file length
+     * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
+     */
+    doca_error_t read_file(char const *path, char **out_bytes, size_t *out_bytes_len);
 
-/*
- * Init a uint16_t array with linear number start from zero
- *
- * @array [in]: pointer to array to init
- * @n [in]: number of element to init
- */
-void linear_array_init_u16(uint16_t *array, uint16_t n);
+    /*
+     * Init a uint16_t array with linear number start from zero
+     *
+     * @array [in]: pointer to array to init
+     * @n [in]: number of element to init
+     */
+    void linear_array_init_u16(uint16_t *array, uint16_t n);
 
 #ifdef DOCA_USE_LIBBSD
 
@@ -102,5 +106,9 @@ size_t strlcat(char *dst, const char *src, size_t size);
 #endif /* strlcat */
 
 #endif /* DOCA_USE_LIBBSD */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COMMON_UTILS_H_ */

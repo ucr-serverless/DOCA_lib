@@ -30,10 +30,9 @@
 #include <doca_error.h>
 #include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#define NS_PER_SEC 1E9  /* Nano-seconds per second */
+#define NS_PER_MSEC 1E6 /* Nano-seconds per millisecond */
+#define NS_PER_USEC 1E3
 
 #ifdef CLOCK_MONOTONIC_RAW /* Defined in glibc bits/time.h */
 #define CLOCK_TYPE_ID CLOCK_MONOTONIC_RAW
@@ -81,6 +80,11 @@ extern "C"
             goto _label;                                                                                               \
         }                                                                                                              \
     }
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
     /* Function to check if a given device is capable of executing some task */
     typedef doca_error_t (*tasks_check)(const struct doca_devinfo *);
 
@@ -281,6 +285,8 @@ extern "C"
      */
     uint64_t align_down_uint64(uint64_t value, uint64_t alignment);
 
+    double calculate_timediff_ms(struct timespec *end, struct timespec *start);
+    double calculate_timediff_usec(struct timespec *end, struct timespec *start);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

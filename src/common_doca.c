@@ -937,3 +937,31 @@ uint64_t align_down_uint64(uint64_t value, uint64_t alignment)
 {
     return value - (value % alignment);
 }
+
+/*
+ * Helper to calculate time difference between two timespec structs
+ *
+ * @end [in]: end time
+ * @start [in]: start time
+ * @return: time difference in milliseconds
+ */
+double calculate_timediff_ms(struct timespec *end, struct timespec *start)
+{
+    long diff;
+
+    diff = (end->tv_sec - start->tv_sec) * NS_PER_SEC;
+    diff += end->tv_nsec;
+    diff -= start->tv_nsec;
+
+    return (double)(diff / NS_PER_MSEC);
+}
+double calculate_timediff_usec(struct timespec *end, struct timespec *start)
+{
+    long diff;
+
+    diff = (end->tv_sec - start->tv_sec) * NS_PER_SEC;
+    diff += end->tv_nsec;
+    diff -= start->tv_nsec;
+
+    return (double)(diff / NS_PER_USEC);
+}

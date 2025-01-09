@@ -44,36 +44,6 @@ DOCA_LOG_REGISTER(COMCH_CTRL_PATH_COMMON);
 #define CC_REC_QUEUE_SIZE 10  /* Maximum amount of message in queue */
 #define CC_SEND_TASK_NUM 1024 /* Number of CC send tasks  */
 
-#define NS_PER_SEC 1E9  /* Nano-seconds per second */
-#define NS_PER_MSEC 1E6 /* Nano-seconds per millisecond */
-#define NS_PER_USEC 1E3
-/*
- * Helper to calculate time difference between two timespec structs
- *
- * @end [in]: end time
- * @start [in]: start time
- * @return: time difference in milliseconds
- */
-double calculate_timediff_ms(struct timespec *end, struct timespec *start)
-{
-    long diff;
-
-    diff = (end->tv_sec - start->tv_sec) * NS_PER_SEC;
-    diff += end->tv_nsec;
-    diff -= start->tv_nsec;
-
-    return (double)(diff / NS_PER_MSEC);
-}
-double calculate_timediff_usec(struct timespec *end, struct timespec *start)
-{
-    long diff;
-
-    diff = (end->tv_sec - start->tv_sec) * NS_PER_SEC;
-    diff += end->tv_nsec;
-    diff -= start->tv_nsec;
-
-    return (double)(diff / NS_PER_USEC);
-}
 /**
  * Argument parsing section
  */
