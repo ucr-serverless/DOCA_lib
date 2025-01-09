@@ -77,8 +77,8 @@ static doca_error_t write_read_connection(struct rdma_config *cfg, struct rdma_r
     wait_for_enter();
 
     /* Read the remote RDMA connection details */
-    result = read_file(tmp_file_path, (char **)&resources->remote_rdma_conn_descriptor,
-                       &resources->remote_rdma_conn_descriptor_size);
+    result = read_file_rdma(tmp_file_path, (char **)&resources->remote_rdma_conn_descriptor,
+                            &resources->remote_rdma_conn_descriptor_size);
     if (result != DOCA_SUCCESS)
         DOCA_LOG_ERR("Failed to read the remote RDMA connection details: %s", doca_error_get_descr(result));
 

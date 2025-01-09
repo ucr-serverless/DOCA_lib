@@ -245,7 +245,7 @@ extern "C"
      * @string_len [out]: The length of the string we read
      * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
      */
-    doca_error_t read_file(const char *file_path, char **string, size_t *string_len);
+    doca_error_t read_file_rdma(const char *file_path, char **string, size_t *string_len);
 
     /*
      * Delete file if exists

@@ -14,6 +14,7 @@ doca_dep = dependency('doca-common', required: true)
 doca_argp_dep = dependency('doca-argp', required: true)
 doca_rdma_dep = dependency('doca-rdma', required: true)
 doca_dma_dep = dependency('doca-dma', required: true)
+doca_comch_dep = dependency('doca-comch', required: true)
 
 doca_inc_dir = '/opt/mellanox/doca/include'
 
@@ -37,6 +38,9 @@ src_files = files(
   'src/rdma_common_doca.c',
   'utils/sock_utils.c',
   'utils/log.c',
+  'src/utils_doca.c',
+  'src/comch_utils.c',
+  'src/comch_ctrl_path_common.c',
 
   )
 inc_dirs = [ 'include', 'utils' ]
@@ -74,7 +78,7 @@ foreach prog : bin_programs
     sources: prog[1] + src_files,
     include_directories: inc_dirs + doca_inc,
     c_args: cflags,
-    dependencies: [doca_dep, doca_argp_dep, doca_rdma_dep, doca_dma_dep],
+    dependencies: [doca_dep, doca_argp_dep, doca_rdma_dep, doca_dma_dep, doca_comch_dep],
     install: true
   )
 endforeach

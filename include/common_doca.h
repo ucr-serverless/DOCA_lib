@@ -35,6 +35,11 @@ extern "C"
 {
 #endif
 
+#ifdef CLOCK_MONOTONIC_RAW /* Defined in glibc bits/time.h */
+#define CLOCK_TYPE_ID CLOCK_MONOTONIC_RAW
+#else
+#define CLOCK_TYPE_ID CLOCK_MONOTONIC
+#endif
 #define EXIT_ON_FAILURE(_expression_)                                                                                  \
     {                                                                                                                  \
         doca_error_t _status_ = _expression_;                                                                          \

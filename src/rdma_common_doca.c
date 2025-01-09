@@ -1281,7 +1281,7 @@ doca_error_t write_file(const char *file_path, const char *string, size_t string
     return result;
 }
 
-doca_error_t read_file(const char *file_path, char **string, size_t *string_len)
+doca_error_t read_file_rdma(const char *file_path, char **string, size_t *string_len)
 {
     FILE *fp;
     long file_size;
