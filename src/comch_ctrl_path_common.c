@@ -169,6 +169,7 @@ static doca_error_t messages_number_callback(void *param, void *config)
     return DOCA_SUCCESS;
 }
 
+// if server wants to end connection actively, call the doca_comch_server_disconnect
 void basic_server_disconnection_event_callback(struct doca_comch_event_connection_status_changed *event,
                                                struct doca_comch_connection *comch_conn, uint8_t change_success)
 {
@@ -510,9 +511,10 @@ void clean_comch_ctrl_path_client(struct doca_comch_client *client, struct doca_
     }
 }
 
-doca_error_t init_comch_ctrl_path_client(const char *server_name, struct doca_dev *hw_dev,
-                                         struct comch_ctrl_path_client_cb_config *cb_cfg,
-                                         struct doca_comch_client **client, struct doca_pe **pe)
+static doca_error_t inner_init_comch_ctrl_path_client(const char *server_name, struct doca_dev *hw_dev,
+                                                      struct comch_ctrl_path_client_cb_config *cb_cfg,
+                                                      struct doca_comch_client **client, struct doca_pe **pe,
+                                                      struct doca_ctx **out_ctx)
 {
     doca_error_t result;
     struct doca_ctx *ctx;
@@ -615,6 +617,8 @@ doca_error_t init_comch_ctrl_path_client(const char *server_name, struct doca_de
         goto destroy_client;
     }
 
+    *out_ctx = ctx;
+
     return DOCA_SUCCESS;
 
 destroy_client:
@@ -625,7 +629,23 @@ destroy_pe:
     *pe = NULL;
     return result;
 }
+doca_error_t init_comch_ctrl_path_client(const char *server_name, struct doca_dev *hw_dev,
+                                         struct comch_ctrl_path_client_cb_config *cb_cfg,
+                                         struct doca_comch_client **client, struct doca_pe **pe)
+{
 
+    struct doca_ctx *ctx;
+    return inner_init_comch_ctrl_path_client(server_name, hw_dev, cb_cfg, client, pe, &ctx);
+}
+
+doca_error_t init_comch_ctrl_path_client_with_ctx(const char *server_name, struct doca_dev *hw_dev,
+                                                  struct comch_ctrl_path_client_cb_config *cb_cfg,
+                                                  struct doca_comch_client **client, struct doca_pe **pe,
+                                                  struct doca_ctx **ctx)
+{
+
+    return inner_init_comch_ctrl_path_client(server_name, hw_dev, cb_cfg, client, pe, ctx);
+}
 void clean_comch_ctrl_path_server(struct doca_comch_server *server, struct doca_pe *pe)
 {
     doca_error_t result;
@@ -645,9 +665,11 @@ void clean_comch_ctrl_path_server(struct doca_comch_server *server, struct doca_
     }
 }
 
-doca_error_t init_comch_ctrl_path_server(const char *server_name, struct doca_dev *hw_dev, struct doca_dev_rep *rep_dev,
-                                         struct comch_ctrl_path_server_cb_config *cb_cfg,
-                                         struct doca_comch_server **server, struct doca_pe **pe)
+static doca_error_t inner_init_comch_ctrl_path_server(const char *server_name, struct doca_dev *hw_dev,
+                                                      struct doca_dev_rep *rep_dev,
+                                                      struct comch_ctrl_path_server_cb_config *cb_cfg,
+                                                      struct doca_comch_server **server, struct doca_pe **pe,
+                                                      struct doca_ctx **out_ctx)
 {
     doca_error_t result;
     union doca_data user_data;
@@ -757,6 +779,8 @@ doca_error_t init_comch_ctrl_path_server(const char *server_name, struct doca_de
         goto destroy_server;
     }
 
+    *out_ctx = ctx;
+
     return DOCA_SUCCESS;
 
 destroy_server:
@@ -766,4 +790,22 @@ destroy_pe:
     doca_pe_destroy(*pe);
     *pe = NULL;
     return result;
+}
+doca_error_t init_comch_ctrl_path_server(const char *server_name, struct doca_dev *hw_dev, struct doca_dev_rep *rep_dev,
+                                         struct comch_ctrl_path_server_cb_config *cb_cfg,
+                                         struct doca_comch_server **server, struct doca_pe **pe)
+{
+
+    struct doca_ctx *ctx;
+    return inner_init_comch_ctrl_path_server(server_name, hw_dev, rep_dev, cb_cfg, server, pe, &ctx);
+}
+
+doca_error_t init_comch_ctrl_path_server_with_ctx(const char *server_name, struct doca_dev *hw_dev,
+                                                  struct doca_dev_rep *rep_dev,
+                                                  struct comch_ctrl_path_server_cb_config *cb_cfg,
+                                                  struct doca_comch_server **server, struct doca_pe **pe,
+                                                  struct doca_ctx **ctx)
+{
+
+    return inner_init_comch_ctrl_path_server(server_name, hw_dev, rep_dev, cb_cfg, server, pe, ctx);
 }

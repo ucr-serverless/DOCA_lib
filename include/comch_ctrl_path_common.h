@@ -128,6 +128,10 @@ extern "C"
     doca_error_t init_comch_ctrl_path_client(const char *server_name, struct doca_dev *hw_dev,
                                              struct comch_ctrl_path_client_cb_config *cb_cfg,
                                              struct doca_comch_client **client, struct doca_pe **pe);
+    doca_error_t init_comch_ctrl_path_client_with_ctx(const char *server_name, struct doca_dev *hw_dev,
+                                                      struct comch_ctrl_path_client_cb_config *cb_cfg,
+                                                      struct doca_comch_client **client, struct doca_pe **pe,
+                                                      struct doca_ctx **ctx);
 
     /**
      * Clean server and its PE
@@ -152,6 +156,11 @@ extern "C"
                                              struct doca_dev_rep *rep_dev,
                                              struct comch_ctrl_path_server_cb_config *cb_cfg,
                                              struct doca_comch_server **server, struct doca_pe **pe);
+    doca_error_t init_comch_ctrl_path_server_with_ctx(const char *server_name, struct doca_dev *hw_dev,
+                                                      struct doca_dev_rep *rep_dev,
+                                                      struct comch_ctrl_path_server_cb_config *cb_cfg,
+                                                      struct doca_comch_server **server, struct doca_pe **pe,
+                                                      struct doca_ctx **ctx);
 
     void basic_send_task_completion_callback(struct doca_comch_task_send *task, union doca_data task_user_data,
                                              union doca_data ctx_user_data);
