@@ -152,6 +152,17 @@ extern "C"
                                              struct comch_ctrl_path_server_cb_config *cb_cfg,
                                              struct doca_comch_server **server, struct doca_pe **pe);
 
+    void basic_send_task_completion_callback(struct doca_comch_task_send *task, union doca_data task_user_data,
+                                             union doca_data ctx_user_data);
+    void basic_send_task_completion_err_callback(struct doca_comch_task_send *task, union doca_data task_user_data,
+                                                 union doca_data ctx_user_data);
+    void basic_server_disconnection_event_callback(struct doca_comch_event_connection_status_changed *event,
+                                                   struct doca_comch_connection *comch_conn, uint8_t change_success);
+
+    void basic_server_connection_event_callback(struct doca_comch_event_connection_status_changed *event,
+                                                struct doca_comch_connection *comch_conn, uint8_t change_success);
+    void basic_comch_server_state_changed_callback(const union doca_data user_data, struct doca_ctx *ctx,
+                                                   enum doca_ctx_states prev_state, enum doca_ctx_states next_state);
 #ifdef __cplusplus
 }
 #endif

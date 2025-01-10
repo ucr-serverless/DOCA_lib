@@ -44,6 +44,27 @@ DOCA_LOG_REGISTER(COMCH_CTRL_PATH_COMMON);
 #define CC_REC_QUEUE_SIZE 10  /* Maximum amount of message in queue */
 #define CC_SEND_TASK_NUM 1024 /* Number of CC send tasks  */
 
+void basic_send_task_completion_callback(struct doca_comch_task_send *task, union doca_data task_user_data,
+                                         union doca_data ctx_user_data)
+{
+
+    (void)ctx_user_data;
+    /* This argument is not in use */
+    (void)task_user_data;
+
+    doca_task_free(doca_comch_task_send_as_task(task));
+}
+
+void basic_send_task_completion_err_callback(struct doca_comch_task_send *task, union doca_data task_user_data,
+                                             union doca_data ctx_user_data)
+{
+
+    (void)ctx_user_data;
+    /* This argument is not in use */
+    (void)task_user_data;
+
+    doca_task_free(doca_comch_task_send_as_task(task));
+}
 /**
  * Argument parsing section
  */
@@ -71,6 +92,57 @@ static doca_error_t messages_number_callback(void *param, void *config)
     return DOCA_SUCCESS;
 }
 
+void basic_server_disconnection_event_callback(struct doca_comch_event_connection_status_changed *event,
+                                               struct doca_comch_connection *comch_conn, uint8_t change_success)
+{
+    /* These arguments are not in use */
+    (void)event;
+    (void)change_success;
+
+    DOCA_LOG_INFO("A client was disconnected from server");
+}
+
+void basic_server_connection_event_callback(struct doca_comch_event_connection_status_changed *event,
+                                            struct doca_comch_connection *comch_conn, uint8_t change_success)
+{
+
+    /* This argument is not in use */
+    (void)event;
+    DOCA_LOG_INFO("client connected");
+}
+
+void basic_comch_server_state_changed_callback(const union doca_data user_data, struct doca_ctx *ctx,
+                                               enum doca_ctx_states prev_state, enum doca_ctx_states next_state)
+{
+    (void)ctx;
+    (void)prev_state;
+
+    switch (next_state)
+    {
+    case DOCA_CTX_STATE_IDLE:
+        DOCA_LOG_INFO("CC server context has been stopped");
+        /* We can stop progressing the PE */
+        break;
+    case DOCA_CTX_STATE_STARTING:
+        /**
+         * The context is in starting state, this is unexpected for CC server.
+         */
+        DOCA_LOG_ERR("server context entered into starting state");
+        break;
+    case DOCA_CTX_STATE_RUNNING:
+        DOCA_LOG_INFO("CC server context is running. Waiting for clients to connect");
+        break;
+    case DOCA_CTX_STATE_STOPPING:
+        /**
+         * The context is in stopping, this can happen when fatal error encountered or when stopping context.
+         * doca_pe_progress() will cause all tasks to be flushed, and finally transition state to idle
+         */
+        DOCA_LOG_INFO("CC server context entered into stopping state. Terminating connections with clients");
+        break;
+    default:
+        break;
+    }
+}
 /*
  * ARGP Callback - Handle message size parameter
  *
