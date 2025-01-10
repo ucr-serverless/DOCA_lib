@@ -965,3 +965,13 @@ double calculate_timediff_usec(struct timespec *end, struct timespec *start)
 
     return (double)(diff / NS_PER_USEC);
 }
+double calculate_timediff_nsec(struct timespec *end, struct timespec *start)
+{
+    long diff;
+
+    diff = (end->tv_sec - start->tv_sec) * NS_PER_SEC;
+    diff += end->tv_nsec;
+    diff -= start->tv_nsec;
+
+    return (double)diff;
+}

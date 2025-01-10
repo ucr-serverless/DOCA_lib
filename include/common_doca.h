@@ -35,6 +35,8 @@
 #define NS_PER_SEC 1E9  /* Nano-seconds per second */
 #define NS_PER_MSEC 1E6 /* Nano-seconds per millisecond */
 #define NS_PER_USEC 1E3
+#define USEC_PER_SEC 1E6
+#define MSEC_PER_SEC 1E3
 
 #ifdef CLOCK_MONOTONIC_RAW /* Defined in glibc bits/time.h */
 #define CLOCK_TYPE_ID CLOCK_MONOTONIC_RAW
@@ -289,6 +291,7 @@ extern "C"
 
     double calculate_timediff_ms(struct timespec *end, struct timespec *start);
     double calculate_timediff_usec(struct timespec *end, struct timespec *start);
+    double calculate_timediff_nsec(struct timespec *end, struct timespec *start);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
