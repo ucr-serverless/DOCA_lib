@@ -65,6 +65,83 @@ void basic_send_task_completion_err_callback(struct doca_comch_task_send *task, 
 
     doca_task_free(doca_comch_task_send_as_task(task));
 }
+// there are no recv req need to be handled
+void basic_recv_task_completion_callback(struct doca_comch_event_msg_recv *event, uint8_t *recv_buffer,
+                                         uint32_t msg_len, struct doca_comch_connection *comch_connection)
+{
+    DOCA_LOG_INFO("receved a message");
+}
+
+doca_error_t comch_server_send_msg(struct doca_comch_server *comch_server, struct doca_comch_connection *peer,
+                                   const void *msg, uint32_t len, union doca_data user_data,
+                                   struct doca_comch_task_send **task)
+{
+    struct doca_task *task_obj;
+    doca_error_t result;
+
+    /* This function will only be called after a message was received, so connection should be available */
+    if (peer == NULL)
+    {
+        DOCA_LOG_ERR("Failed to send response: no connection available");
+        return DOCA_ERROR_NOT_CONNECTED;
+    }
+
+    result = doca_comch_server_task_send_alloc_init(comch_server, peer, msg, len, task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to allocate task in server with error = %s", doca_error_get_name(result));
+        return result;
+    }
+
+    task_obj = doca_comch_task_send_as_task(*task);
+
+    doca_task_set_user_data(task_obj, user_data);
+
+    result = doca_task_submit(task_obj);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed submitting send task with error = %s", doca_error_get_name(result));
+        doca_task_free(task_obj);
+        return result;
+    }
+
+    return DOCA_SUCCESS;
+}
+doca_error_t comch_client_send_msg(struct doca_comch_client *comch_client, struct doca_comch_connection *peer,
+                                   const void *msg, uint32_t len, union doca_data user_data,
+                                   struct doca_comch_task_send **task)
+{
+    struct doca_task *task_obj;
+    doca_error_t result;
+
+    /* This function will only be called after a message was received, so connection should be available */
+    if (peer == NULL)
+    {
+        DOCA_LOG_ERR("Failed to send response: no connection available");
+        return DOCA_ERROR_NOT_CONNECTED;
+    }
+
+    result = doca_comch_client_task_send_alloc_init(comch_client, peer, msg, len, task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to allocate task in server with error = %s", doca_error_get_name(result));
+        return result;
+    }
+
+    task_obj = doca_comch_task_send_as_task(*task);
+
+    doca_task_set_user_data(task_obj, user_data);
+
+    result = doca_task_submit(task_obj);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed submitting send task with error = %s", doca_error_get_name(result));
+        doca_task_free(task_obj);
+        return result;
+    }
+
+    return DOCA_SUCCESS;
+}
 /**
  * Argument parsing section
  */
@@ -111,8 +188,8 @@ void basic_server_connection_event_callback(struct doca_comch_event_connection_s
     DOCA_LOG_INFO("client connected");
 }
 
-void basic_comch_server_state_changed_callback(const union doca_data user_data, struct doca_ctx *ctx,
-                                               enum doca_ctx_states prev_state, enum doca_ctx_states next_state)
+void basic_comch_state_changed_callback(const union doca_data user_data, struct doca_ctx *ctx,
+                                        enum doca_ctx_states prev_state, enum doca_ctx_states next_state)
 {
     (void)ctx;
     (void)prev_state;
@@ -165,6 +242,20 @@ static doca_error_t message_size_callback(void *param, void *config)
     return DOCA_SUCCESS;
 }
 
+static doca_error_t thread_sz_callback(void *param, void *config)
+{
+    struct comch_config *app_cfg = (struct comch_config *)config;
+    int send_msg_size = *(int *)param;
+
+    if (send_msg_size < 1 || send_msg_size > 1024)
+    {
+        DOCA_LOG_ERR("Received message size is not supported. Max is %u", MAX_MSG_SIZE);
+        return DOCA_ERROR_INVALID_VALUE;
+    }
+
+    app_cfg->n_thread = send_msg_size;
+    return DOCA_SUCCESS;
+}
 static doca_error_t bool_callback(void *param, void *config)
 {
     struct comch_config *app_cfg = (struct comch_config *)config;
@@ -261,6 +352,7 @@ doca_error_t register_comch_params(void)
     struct doca_argp_param *dev_pci_addr_param, *text_param, *rep_pci_addr_param;
     struct doca_argp_param *message_size_param, *messages_number_param;
     struct doca_argp_param *is_epoll_param;
+    struct doca_argp_param *thread_sz_param;
 
     result = doca_argp_param_create(&message_size_param);
     if (result != DOCA_SUCCESS)
@@ -378,6 +470,24 @@ doca_error_t register_comch_params(void)
         return result;
     }
 
+    result = doca_argp_param_create(&thread_sz_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(thread_sz_param, "ts");
+    doca_argp_param_set_long_name(thread_sz_param, "thread-size");
+    doca_argp_param_set_description(thread_sz_param, "thread to create");
+    doca_argp_param_set_callback(thread_sz_param, thread_sz_callback);
+    doca_argp_param_set_type(thread_sz_param, DOCA_ARGP_TYPE_INT);
+    doca_argp_param_set_mandatory(thread_sz_param);
+    result = doca_argp_register_param(thread_sz_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
     return DOCA_SUCCESS;
 }
 

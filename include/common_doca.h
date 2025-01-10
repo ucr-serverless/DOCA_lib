@@ -26,9 +26,11 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
+#include <bits/time.h>
 #include <doca_dev.h>
 #include <doca_error.h>
 #include <stdbool.h>
+#include <time.h>
 
 #define NS_PER_SEC 1E9  /* Nano-seconds per second */
 #define NS_PER_MSEC 1E6 /* Nano-seconds per millisecond */

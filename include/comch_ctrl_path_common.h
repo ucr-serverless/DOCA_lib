@@ -53,6 +53,7 @@ extern "C"
         uint32_t send_msg_nb;
         uint32_t send_msg_size;
         bool is_epoll;
+        uint32_t n_thread;
     };
 
     struct comch_ctrl_path_client_cb_config
@@ -161,8 +162,16 @@ extern "C"
 
     void basic_server_connection_event_callback(struct doca_comch_event_connection_status_changed *event,
                                                 struct doca_comch_connection *comch_conn, uint8_t change_success);
-    void basic_comch_server_state_changed_callback(const union doca_data user_data, struct doca_ctx *ctx,
-                                                   enum doca_ctx_states prev_state, enum doca_ctx_states next_state);
+    void basic_comch_state_changed_callback(const union doca_data user_data, struct doca_ctx *ctx,
+                                            enum doca_ctx_states prev_state, enum doca_ctx_states next_state);
+    void basic_recv_task_completion_callback(struct doca_comch_event_msg_recv *event, uint8_t *recv_buffer,
+                                             uint32_t msg_len, struct doca_comch_connection *comch_connection);
+    doca_error_t comch_server_send_msg(struct doca_comch_server *comch_server, struct doca_comch_connection *peer,
+                                       const void *msg, uint32_t len, union doca_data user_data,
+                                       struct doca_comch_task_send **task);
+    doca_error_t comch_client_send_msg(struct doca_comch_client *comch_client, struct doca_comch_connection *peer,
+                                       const void *msg, uint32_t len, union doca_data user_data,
+                                       struct doca_comch_task_send **task);
 #ifdef __cplusplus
 }
 #endif
