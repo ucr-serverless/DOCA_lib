@@ -41,7 +41,7 @@
 #define MAX_MSG_SIZE 65535 /* Max message size */
 DOCA_LOG_REGISTER(COMCH_CTRL_PATH_COMMON);
 
-#define CC_REC_QUEUE_SIZE 10  /* Maximum amount of message in queue */
+#define CC_REC_QUEUE_SIZE 100000  /* Maximum amount of message in queue */
 #define CC_SEND_TASK_NUM 1024 /* Number of CC send tasks  */
 
 void basic_send_task_completion_callback(struct doca_comch_task_send *task, union doca_data task_user_data,
@@ -600,6 +600,7 @@ static doca_error_t inner_init_comch_ctrl_path_client(const char *server_name, s
         DOCA_LOG_ERR("Failed to set msg size property with error = %s", doca_error_get_name(result));
         goto destroy_client;
     }
+    // set the user_data in cb_cfg to be the ctx user data
 
     user_data.ptr = cb_cfg->ctx_user_data;
     result = doca_ctx_set_user_data(ctx, user_data);
