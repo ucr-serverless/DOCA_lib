@@ -195,6 +195,7 @@ extern "C"
                                   rdma_task_read/write */
         struct timespec start_time;
         struct timespec end_time;
+        uint32_t n_received_req;
     };
 
     /*
@@ -475,6 +476,31 @@ extern "C"
     void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *task,
 							union doca_data task_user_data,
 							union doca_data ctx_user_data);
+
+void basic_rdma_connection_callback(struct doca_rdma_connection *rdma_connection,
+						  union doca_data ctx_user_data);
+
+
+void basic_rdma_connection_established_callback(struct doca_rdma_connection *rdma_connection,
+						      union doca_data connection_user_data,
+						      union doca_data ctx_user_data);
+
+void basic_rdma_connection_failure(struct doca_rdma_connection *rdma_connection,
+						  union doca_data connection_user_data,
+						  union doca_data ctx_user_data);
+
+void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection,
+							union doca_data connection_user_data,
+							union doca_data ctx_user_data);
+void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection,
+							union doca_data connection_user_data,
+							union doca_data ctx_user_data);
+
+void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_task,
+                                                       union doca_data task_user_data, union doca_data ctx_user_data);
+
+void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task,
+                                                       union doca_data task_user_data, union doca_data ctx_user_data);
 #ifdef __cplusplus
 }
 #endif

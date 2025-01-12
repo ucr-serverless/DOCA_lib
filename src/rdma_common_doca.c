@@ -36,6 +36,7 @@
 #include <doca_log.h>
 
 #include "common_doca.h"
+#include "doca_buf.h"
 #include "doca_rdma.h"
 #include "log.h"
 #include "rdma_common_doca.h"
@@ -1018,7 +1019,7 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     }
 
     /* Allocate memory for memory range */
-    resources->mmap_memrange = calloc(MEM_RANGE_LEN, sizeof(*resources->mmap_memrange));
+    resources->mmap_memrange = calloc(resources->cfg->msg_sz, sizeof(char));
     if (resources->mmap_memrange == NULL)
     {
         DOCA_LOG_ERR("Failed to allocate memory for mmap_memrange: %s", doca_error_get_descr(result));
@@ -1027,7 +1028,7 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     }
 
     /* Create mmap with allocated memory */
-    result = create_local_mmap(&(resources->mmap), mmap_permissions, (void *)resources->mmap_memrange, MEM_RANGE_LEN,
+    result = create_local_mmap(&(resources->mmap), mmap_permissions, (void *)resources->mmap_memrange, resources->cfg->msg_sz,
                                resources->doca_device);
     if (result != DOCA_SUCCESS)
     {
@@ -2248,24 +2249,30 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
                                                        union doca_data task_user_data, union doca_data ctx_user_data)
 {
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
-    void *dst_buf_data = NULL;
-    doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
-    doca_error_t result = DOCA_SUCCESS;
-    struct doca_rdma_connection *rdma_connection;
-    struct doca_buf *dst_buf = NULL;
+    doca_error_t result;
     struct doca_rdma_task_send_imm *send_task;
 
-    rdma_connection = doca_rdma_task_receive_get_result_rdma_connection(rdma_receive_task);
+    const struct doca_rdma_connection *conn = doca_rdma_task_receive_get_result_rdma_connection(rdma_receive_task);
+
+    struct doca_rdma_connection *rdma_connection = (struct doca_rdma_connection*)conn;
 
 
+    struct doca_buf *buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
 
-    result = submit_send_imm_task(resources->rdma, rdma_connection, dst_buf, 0, task_user_data, &send_task);
+    doca_buf_reset_data_len(buf);
+
+
+    resources->n_received_req++;
+
+    result = submit_send_imm_task(resources->rdma, rdma_connection, buf, 0, task_user_data, &send_task);
     JUMP_ON_DOCA_ERROR(result, free_send_task);
+
     DOCA_LOG_INFO("send task submitted");
     goto free_task;
 
 free_send_task:
-    result = doca_buf_dec_refcount(dst_buf, NULL);
+    doca_task_free(doca_rdma_task_send_imm_as_task(send_task));
+    result = doca_buf_dec_refcount(buf, NULL);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to decrease dst_buf count: %s", doca_error_get_descr(result));
@@ -2273,4 +2280,46 @@ free_send_task:
     }
 free_task:
     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_task));
+}
+
+void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task,
+                                                       union doca_data task_user_data, union doca_data ctx_user_data)
+{
+
+    doca_error_t result;
+
+    struct doca_buf *dst_buf = NULL;
+
+    dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
+    result = doca_buf_dec_refcount(dst_buf, NULL);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to decrease dst_buf count: %s", doca_error_get_descr(result));
+        DOCA_ERROR_PROPAGATE(result, result);
+    }
+
+    doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_task));
+}
+
+void basic_rdma_connection_callback(struct doca_rdma_connection *rdma_connection,
+						  union doca_data ctx_user_data) {
+    DOCA_LOG_INFO("connection establishes");
+
+}
+void basic_rdma_connection_established_callback(struct doca_rdma_connection *rdma_connection,
+						      union doca_data connection_user_data,
+						      union doca_data ctx_user_data) {
+    DOCA_LOG_INFO("connection established");
+}
+
+void basic_rdma_connection_failure(struct doca_rdma_connection *rdma_connection,
+						  union doca_data connection_user_data,
+						  union doca_data ctx_user_data) {
+    DOCA_LOG_INFO("connection failed");
+}
+
+void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection,
+							union doca_data connection_user_data,
+							union doca_data ctx_user_data) {
+    DOCA_LOG_INFO("connection disconnected");
 }
