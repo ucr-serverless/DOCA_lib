@@ -2213,6 +2213,7 @@ doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, stru
     }
 
     result = resources->first_encountered_error;
+    return result;
 
 destroy_resources:
     tmp_result = destroy_rdma_resources(resources, cfg);
@@ -2221,7 +2222,7 @@ destroy_resources:
         DOCA_LOG_ERR("Failed to destroy DOCA RDMA resources: %s", doca_error_get_descr(tmp_result));
         DOCA_ERROR_PROPAGATE(result, tmp_result);
     }
-    return result;
+    return tmp_result;
 }
 
 void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *task, union doca_data task_user_data,
