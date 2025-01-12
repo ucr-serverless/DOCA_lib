@@ -1096,12 +1096,12 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     }
 
     /* Set num_connections to DOCA RDMA */
-    result = doca_rdma_set_max_num_connections(resources->rdma, cfg->num_connections);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to set max_num_connections to DOCA RDMA: %s", doca_error_get_descr(result));
-        goto destroy_doca_rdma;
-    }
+    // result = doca_rdma_set_max_num_connections(resources->rdma, cfg->num_connections);
+    // if (result != DOCA_SUCCESS)
+    // {
+    //     DOCA_LOG_ERR("Failed to set max_num_connections to DOCA RDMA: %s", doca_error_get_descr(result));
+    //     goto destroy_doca_rdma;
+    // }
 
     /* Set transport type */
     result = doca_rdma_set_transport_type(resources->rdma, cfg->transport_type);
@@ -2202,7 +2202,6 @@ doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, stru
     }
 
     result = resources->first_encountered_error;
-    close(cfg->sock_fd);
 
 destroy_resources:
     tmp_result = destroy_rdma_resources(resources, cfg);
