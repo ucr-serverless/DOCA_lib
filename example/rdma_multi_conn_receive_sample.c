@@ -465,10 +465,10 @@ doca_error_t rdma_multi_conn_receive(struct rdma_config *cfg)
     union doca_data ctx_user_data = {0};
     uint32_t mmap_permissions = DOCA_ACCESS_FLAG_LOCAL_READ_WRITE;
     uint32_t rdma_permissions = DOCA_ACCESS_FLAG_LOCAL_READ_WRITE;
-    struct timespec ts = {
-        .tv_sec = 0,
-        .tv_nsec = SLEEP_IN_NANOS,
-    };
+    // struct timespec ts = {
+    //     .tv_sec = 0,
+    //     .tv_nsec = SLEEP_IN_NANOS,
+    // };
     doca_error_t result, tmp_result;
 
     /* Allocating resources */

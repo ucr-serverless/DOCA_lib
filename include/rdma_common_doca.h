@@ -469,38 +469,38 @@ extern "C"
     uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task);
     doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg,
                                               struct rdma_cb_config *cb_cfg);
-    void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *task,
-							union doca_data task_user_data,
-							union doca_data ctx_user_data);
+    void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *task, union doca_data task_user_data,
+                                           union doca_data ctx_user_data);
 
-    void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *task,
-							union doca_data task_user_data,
-							union doca_data ctx_user_data);
+    void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *task, union doca_data task_user_data,
+                                               union doca_data ctx_user_data);
 
-void basic_rdma_connection_callback(struct doca_rdma_connection *rdma_connection,
-						  union doca_data ctx_user_data);
+    void basic_rdma_connection_callback(struct doca_rdma_connection *rdma_connection, union doca_data ctx_user_data);
 
+    void basic_rdma_connection_established_callback(struct doca_rdma_connection *rdma_connection,
+                                                    union doca_data connection_user_data,
+                                                    union doca_data ctx_user_data);
 
-void basic_rdma_connection_established_callback(struct doca_rdma_connection *rdma_connection,
-						      union doca_data connection_user_data,
-						      union doca_data ctx_user_data);
+    void basic_rdma_connection_failure(struct doca_rdma_connection *rdma_connection,
+                                       union doca_data connection_user_data, union doca_data ctx_user_data);
 
-void basic_rdma_connection_failure(struct doca_rdma_connection *rdma_connection,
-						  union doca_data connection_user_data,
-						  union doca_data ctx_user_data);
+    void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection,
+                                        union doca_data connection_user_data, union doca_data ctx_user_data);
+    void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection,
+                                        union doca_data connection_user_data, union doca_data ctx_user_data);
 
-void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection,
-							union doca_data connection_user_data,
-							union doca_data ctx_user_data);
-void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection,
-							union doca_data connection_user_data,
-							union doca_data ctx_user_data);
+    void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_task, union doca_data task_user_data,
+                                      union doca_data ctx_user_data);
 
-void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_task,
-                                                       union doca_data task_user_data, union doca_data ctx_user_data);
+    void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, union doca_data task_user_data,
+                                union doca_data ctx_user_data);
+    doca_error_t rdma_multi_conn_recv_export_and_connect(struct rdma_resources *resources,
+                                                         struct doca_rdma_connection **connections,
+                                                         uint32_t n_connections, int sock_fd);
+    doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resources *resources,
+                                                         struct doca_rdma_connection **connections,
+                                                         uint32_t n_connections, int sock_fd);
 
-void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task,
-                                                       union doca_data task_user_data, union doca_data ctx_user_data);
 #ifdef __cplusplus
 }
 #endif

@@ -59,7 +59,7 @@ DOCA_LOG_REGISTER(RDMA_MULI_CONN_SEND::SAMPLE);
 /*     doca_error_t result = DOCA_SUCCESS; */
 /*     char tmp_file_path[MAX_ARG_SIZE * 2]; */
 /**/
-/*     /* Write the RDMA connection details */
+//     /* Write the RDMA connection details */
 /*     memset(tmp_file_path, 0, MAX_ARG_SIZE + 4); */
 /*     sprintf(tmp_file_path, "%s-%04u", cfg->local_connection_desc_path, connection_id); */
 /*     result = write_file(tmp_file_path, (char *)resources->rdma_conn_descriptor,
@@ -78,10 +78,10 @@ DOCA_LOG_REGISTER(RDMA_MULI_CONN_SEND::SAMPLE);
  */
 /*                   tmp_file_path); */
 /**/
-/*     /* Wait for enter */
+//     // Wait for enter
 /*     wait_for_enter(); */
 /**/
-/*     /* Read the remote RDMA connection details */
+//     // Read the remote RDMA connection details
 /*     result = read_file(tmp_file_path, (char **)&resources->remote_rdma_conn_descriptor, */
 /*                        &resources->remote_rdma_conn_descriptor_size); */
 /*     if (result != DOCA_SUCCESS) */
@@ -181,7 +181,7 @@ static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send_i
                                                     union doca_data task_user_data, union doca_data ctx_user_data)
 {
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
-    doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
+    // doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
     struct doca_buf *src_buf = NULL;
     /* doca_error_t result = DOCA_SUCCESS, tmp_result; */
 
@@ -249,7 +249,7 @@ static void rdma_multi_conn_send_error_callback(struct doca_rdma_task_send_imm *
  * @resources [in]: RDMA resources
  * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
  */
-static doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resources *resources)
+static doca_error_t local_rdma_multi_conn_send_export_and_connect(struct rdma_resources *resources)
 {
     doca_error_t result = DOCA_SUCCESS;
     uint32_t i = 0;
@@ -430,7 +430,7 @@ static void rdma_multi_conn_send_state_change_callback(const union doca_data use
     case DOCA_CTX_STATE_RUNNING:
         DOCA_LOG_INFO("RDMA context is running");
 
-        result = rdma_multi_conn_send_export_and_connect(resources);
+        result = local_rdma_multi_conn_send_export_and_connect(resources);
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("rdma_multi_conn_send_export_and_connect() failed: %s", doca_error_get_descr(result));
@@ -493,10 +493,10 @@ doca_error_t rdma_multi_conn_send(struct rdma_config *cfg)
     union doca_data ctx_user_data = {0};
     const uint32_t mmap_permissions = DOCA_ACCESS_FLAG_LOCAL_READ_WRITE;
     const uint32_t rdma_permissions = DOCA_ACCESS_FLAG_LOCAL_READ_WRITE;
-    struct timespec ts = {
-        .tv_sec = 0,
-        .tv_nsec = SLEEP_IN_NANOS,
-    };
+    // struct timespec ts = {
+    //     .tv_sec = 0,
+    //     .tv_nsec = SLEEP_IN_NANOS,
+    // };
     doca_error_t result, tmp_result;
 
     /* Allocating resources */

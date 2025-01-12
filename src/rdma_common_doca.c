@@ -1028,8 +1028,8 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     }
 
     /* Create mmap with allocated memory */
-    result = create_local_mmap(&(resources->mmap), mmap_permissions, (void *)resources->mmap_memrange, resources->cfg->msg_sz,
-                               resources->doca_device);
+    result = create_local_mmap(&(resources->mmap), mmap_permissions, (void *)resources->mmap_memrange,
+                               resources->cfg->msg_sz, resources->doca_device);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to create DOCA mmap: %s", doca_error_get_descr(result));
@@ -2149,7 +2149,6 @@ doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, stru
     union doca_data ctx_user_data = {0};
     doca_error_t result, tmp_result;
 
-
     result = doca_rdma_task_receive_set_conf(resources->rdma, cb_cfg->msg_recv_cb, cb_cfg->msg_recv_err_cb,
                                              DEFAULT_RDMA_TASK_NUM);
     if (result != DOCA_SUCCESS)
@@ -2211,9 +2210,8 @@ destroy_resources:
     return result;
 }
 
-void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *task,
-							union doca_data task_user_data,
-							union doca_data ctx_user_data)
+void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *task, union doca_data task_user_data,
+                                       union doca_data ctx_user_data)
 {
     (void)task_user_data;
     (void)ctx_user_data;
@@ -2228,9 +2226,8 @@ void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *task,
     doca_task_free(doca_rdma_task_send_imm_as_task(task));
 }
 
-void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *task,
-							union doca_data task_user_data,
-							union doca_data ctx_user_data)
+void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *task, union doca_data task_user_data,
+                                           union doca_data ctx_user_data)
 {
     (void)task_user_data;
     (void)ctx_user_data;
@@ -2243,10 +2240,9 @@ void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *task,
     }
     doca_task_free(doca_rdma_task_send_imm_as_task(task));
     DOCA_LOG_INFO("send req error");
-
 }
-void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_task,
-                                                       union doca_data task_user_data, union doca_data ctx_user_data)
+void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_task, union doca_data task_user_data,
+                                  union doca_data ctx_user_data)
 {
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
     doca_error_t result;
@@ -2254,13 +2250,11 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
 
     const struct doca_rdma_connection *conn = doca_rdma_task_receive_get_result_rdma_connection(rdma_receive_task);
 
-    struct doca_rdma_connection *rdma_connection = (struct doca_rdma_connection*)conn;
-
+    struct doca_rdma_connection *rdma_connection = (struct doca_rdma_connection *)conn;
 
     struct doca_buf *buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
 
     doca_buf_reset_data_len(buf);
-
 
     resources->n_received_req++;
 
@@ -2282,8 +2276,8 @@ free_task:
     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_task));
 }
 
-void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task,
-                                                       union doca_data task_user_data, union doca_data ctx_user_data)
+void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, union doca_data task_user_data,
+                            union doca_data ctx_user_data)
 {
 
     doca_error_t result;
@@ -2301,25 +2295,156 @@ void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task,
     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_task));
 }
 
-void basic_rdma_connection_callback(struct doca_rdma_connection *rdma_connection,
-						  union doca_data ctx_user_data) {
+void basic_rdma_connection_callback(struct doca_rdma_connection *rdma_connection, union doca_data ctx_user_data)
+{
     DOCA_LOG_INFO("connection establishes");
-
 }
 void basic_rdma_connection_established_callback(struct doca_rdma_connection *rdma_connection,
-						      union doca_data connection_user_data,
-						      union doca_data ctx_user_data) {
+                                                union doca_data connection_user_data, union doca_data ctx_user_data)
+{
     DOCA_LOG_INFO("connection established");
 }
 
-void basic_rdma_connection_failure(struct doca_rdma_connection *rdma_connection,
-						  union doca_data connection_user_data,
-						  union doca_data ctx_user_data) {
+void basic_rdma_connection_failure(struct doca_rdma_connection *rdma_connection, union doca_data connection_user_data,
+                                   union doca_data ctx_user_data)
+{
     DOCA_LOG_INFO("connection failed");
 }
 
-void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection,
-							union doca_data connection_user_data,
-							union doca_data ctx_user_data) {
+void basic_rdma_disconnect_callback(struct doca_rdma_connection *rdma_connection, union doca_data connection_user_data,
+                                    union doca_data ctx_user_data)
+{
     DOCA_LOG_INFO("connection disconnected");
+}
+
+doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resources *resources,
+                                                     struct doca_rdma_connection **connections, uint32_t n_connections,
+                                                     int sock_fd)
+{
+    doca_error_t result = DOCA_SUCCESS;
+    uint32_t i = 0;
+
+    // if (resources->cfg->use_rdma_cm == true)
+    //     return rdma_cm_connect(resources);
+
+    resources->remote_rdma_conn_descriptor = malloc(MAX_RDMA_DESCRIPTOR_SZ);
+    if (!resources->remote_rdma_conn_descriptor)
+    {
+        return DOCA_ERROR_NO_MEMORY;
+    }
+    /* 1-by-1 to setup all the connections */
+    log_info("total %d connections", n_connections);
+    for (i = 0; i < n_connections; i++)
+    {
+        DOCA_LOG_INFO("Start to establish RDMA connection [%d]", i);
+        /* Export RDMA connection details */
+        result = doca_rdma_export(resources->rdma, &(resources->rdma_conn_descriptor),
+                                  &(resources->rdma_conn_descriptor_size), &connections[i]);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to export RDMA: %s", doca_error_get_descr(result));
+            return result;
+        }
+
+        /* Write and read connection details to the receiver */
+        /* result = write_read_connection(resources->cfg, resources, i); */
+        result = sock_recv_buffer(resources->remote_rdma_conn_descriptor, &resources->remote_rdma_conn_descriptor_size,
+                                  MAX_RDMA_DESCRIPTOR_SZ, sock_fd);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to write and read connection details from receiver: %s", doca_error_get_descr(result));
+            return result;
+        }
+        result = sock_send_buffer(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size, sock_fd);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to send details from sender: %s", doca_error_get_descr(result));
+            return result;
+        }
+        // print_buffer_hex(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size);
+
+        // print_buffer_hex(resources->remote_rdma_conn_descriptor, resources->remote_rdma_conn_descriptor_size);
+
+        /* Connect RDMA */
+        result = doca_rdma_connect(resources->rdma, resources->remote_rdma_conn_descriptor,
+                                   resources->remote_rdma_conn_descriptor_size, connections[i]);
+        if (result != DOCA_SUCCESS)
+            DOCA_LOG_ERR("Failed to connect the sender's RDMA to the receiver's RDMA: %s",
+                         doca_error_get_descr(result));
+
+        /* Free remote connection descriptor */
+        free(resources->remote_rdma_conn_descriptor);
+        resources->remote_rdma_conn_descriptor = NULL;
+
+        DOCA_LOG_INFO("RDMA connection [%d] is establshed", i);
+    }
+    DOCA_LOG_INFO("All [%d] RDMA connections have been establshed", n_connections);
+
+    return result;
+}
+
+doca_error_t rdma_multi_conn_recv_export_and_connect(struct rdma_resources *resources,
+                                                     struct doca_rdma_connection **connections, uint32_t n_connections,
+                                                     int sock_fd)
+{
+    doca_error_t result = DOCA_SUCCESS;
+    uint32_t i = 0;
+
+    // if (resources->cfg->use_rdma_cm == true)
+    //     return rdma_cm_connect(resources);
+
+    resources->remote_rdma_conn_descriptor = malloc(MAX_RDMA_DESCRIPTOR_SZ);
+    if (!resources->remote_rdma_conn_descriptor)
+    {
+        return DOCA_ERROR_NO_MEMORY;
+    }
+    /* 1-by-1 to setup all the connections */
+    log_info("total %d connections", n_connections);
+    for (i = 0; i < n_connections; i++)
+    {
+        DOCA_LOG_INFO("Start to establish RDMA connection [%d]", i);
+        /* Export RDMA connection details */
+        result = doca_rdma_export(resources->rdma, &(resources->rdma_conn_descriptor),
+                                  &(resources->rdma_conn_descriptor_size), &connections[i]);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to export RDMA: %s", doca_error_get_descr(result));
+            return result;
+        }
+
+        result = sock_send_buffer(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size, sock_fd);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to send details from sender: %s", doca_error_get_descr(result));
+            return result;
+        }
+        /* Write and read connection details to the receiver */
+        /* result = write_read_connection(resources->cfg, resources, i); */
+        result = sock_recv_buffer(resources->remote_rdma_conn_descriptor, &resources->remote_rdma_conn_descriptor_size,
+                                  MAX_RDMA_DESCRIPTOR_SZ, sock_fd);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to write and read connection details from receiver: %s", doca_error_get_descr(result));
+            return result;
+        }
+        // print_buffer_hex(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size);
+
+        // print_buffer_hex(resources->remote_rdma_conn_descriptor, resources->remote_rdma_conn_descriptor_size);
+
+        /* Connect RDMA */
+        result = doca_rdma_connect(resources->rdma, resources->remote_rdma_conn_descriptor,
+                                   resources->remote_rdma_conn_descriptor_size, connections[i]);
+        if (result != DOCA_SUCCESS)
+            DOCA_LOG_ERR("Failed to connect the sender's RDMA to the receiver's RDMA: %s",
+                         doca_error_get_descr(result));
+
+        /* Free remote connection descriptor */
+        free(resources->remote_rdma_conn_descriptor);
+        resources->remote_rdma_conn_descriptor = NULL;
+
+        DOCA_LOG_INFO("RDMA connection [%d] is establshed", i);
+    }
+    DOCA_LOG_INFO("All [%d] RDMA connections have been establshed", n_connections);
+
+    return result;
 }
