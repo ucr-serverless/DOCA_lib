@@ -53,6 +53,13 @@
             return _status_;                                                                                           \
         }                                                                                                              \
     }
+#define LOG_ON_FAILURE(_result)                                                                                        \
+    {                                                                                                                  \
+        if (_result != DOCA_SUCCESS)                                                                                   \
+        {                                                                                                              \
+            DOCA_LOG_ERR("%s failed with status %s", __func__, doca_error_get_descr(_result));                         \
+        }                                                                                                              \
+    }
 // evaluate the expression and jump to label is the result is not DOCA_SUCCESS
 #define EVAL_JUMP_ON_DOCA_ERROR(_expression_, _label)                                                                  \
     {                                                                                                                  \

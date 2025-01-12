@@ -125,6 +125,7 @@ extern "C"
         uint32_t msg_sz;
         uint32_t n_msg;
         uint32_t n_thread;
+        bool is_perf_started; // used in the rdma_server/rdma_client perf test
     };
 
     struct rdma_cb_config

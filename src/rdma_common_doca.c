@@ -55,6 +55,7 @@ void init_rdma_config(struct rdma_config *cfg)
     cfg->n_msg = 0;
     cfg->msg_sz = 1;
     cfg->n_thread = 1;
+    cfg->is_perf_started = false;
 }
 doca_error_t check_rdma_send_recv(const struct doca_devinfo *devinfo)
 {
