@@ -123,6 +123,7 @@ extern "C"
         bool is_epoll;
         uint32_t msg_sz;
         uint32_t n_msg;
+        uint32_t n_thread;
     };
 
     struct rdma_cb_config
@@ -467,6 +468,13 @@ extern "C"
     uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task);
     doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg,
                                               struct rdma_cb_config *cb_cfg);
+    void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *task,
+							union doca_data task_user_data,
+							union doca_data ctx_user_data);
+
+    void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *task,
+							union doca_data task_user_data,
+							union doca_data ctx_user_data);
 #ifdef __cplusplus
 }
 #endif
