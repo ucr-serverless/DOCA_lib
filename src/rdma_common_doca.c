@@ -44,6 +44,18 @@
 
 DOCA_LOG_REGISTER(RDMA::COMMON);
 
+void init_rdma_config(struct rdma_config *cfg)
+{
+    cfg->num_connections = 1;
+    cfg->transport_type = DOCA_RDMA_TRANSPORT_TYPE_RC;
+    cfg->use_rdma_cm = false;
+    cfg->sock_fd = 0;
+    cfg->is_host_export = false;
+    cfg->is_epoll = false;
+    cfg->n_msg = 0;
+    cfg->msg_sz = 1;
+    cfg->n_thread = 1;
+}
 doca_error_t check_rdma_send_recv(const struct doca_devinfo *devinfo)
 {
     doca_error_t result;
@@ -995,7 +1007,6 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
 {
     doca_error_t result, tmp_result;
 
-    resources->cfg = cfg;
     resources->first_encountered_error = DOCA_SUCCESS;
     resources->run_pe_progress = true;
     resources->num_remaining_tasks = 0;

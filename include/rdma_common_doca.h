@@ -197,6 +197,7 @@ extern "C"
         struct timespec end_time;
         uint32_t n_received_req;
     };
+    void init_rdma_config(struct rdma_config *cfg);
 
     /*
      * Allocate DOCA RDMA resources
