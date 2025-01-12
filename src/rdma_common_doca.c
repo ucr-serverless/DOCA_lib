@@ -2341,6 +2341,7 @@ doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resources *reso
     // if (resources->cfg->use_rdma_cm == true)
     //     return rdma_cm_connect(resources);
 
+    // reuse the descriptor buffer
     resources->remote_rdma_conn_descriptor = malloc(MAX_RDMA_DESCRIPTOR_SZ);
     if (!resources->remote_rdma_conn_descriptor)
     {
@@ -2360,6 +2361,12 @@ doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resources *reso
             return result;
         }
 
+        result = sock_send_buffer(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size, sock_fd);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to send details from sender: %s", doca_error_get_descr(result));
+            return result;
+        }
         /* Write and read connection details to the receiver */
         /* result = write_read_connection(resources->cfg, resources, i); */
         result = sock_recv_buffer(resources->remote_rdma_conn_descriptor, &resources->remote_rdma_conn_descriptor_size,
@@ -2367,12 +2374,6 @@ doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resources *reso
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to write and read connection details from receiver: %s", doca_error_get_descr(result));
-            return result;
-        }
-        result = sock_send_buffer(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size, sock_fd);
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to send details from sender: %s", doca_error_get_descr(result));
             return result;
         }
         // print_buffer_hex(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size);
@@ -2387,11 +2388,11 @@ doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resources *reso
                          doca_error_get_descr(result));
 
         /* Free remote connection descriptor */
-        free(resources->remote_rdma_conn_descriptor);
-        resources->remote_rdma_conn_descriptor = NULL;
 
         DOCA_LOG_INFO("RDMA connection [%d] is establshed", i);
     }
+    free(resources->remote_rdma_conn_descriptor);
+    resources->remote_rdma_conn_descriptor = NULL;
     DOCA_LOG_INFO("All [%d] RDMA connections have been establshed", n_connections);
 
     return result;
@@ -2426,6 +2427,14 @@ doca_error_t rdma_multi_conn_recv_export_and_connect(struct rdma_resources *reso
             return result;
         }
 
+        result = sock_recv_buffer(resources->remote_rdma_conn_descriptor, &resources->remote_rdma_conn_descriptor_size,
+                                  MAX_RDMA_DESCRIPTOR_SZ, sock_fd);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to write and read connection details from receiver: %s", doca_error_get_descr(result));
+            return result;
+        }
+
         result = sock_send_buffer(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size, sock_fd);
         if (result != DOCA_SUCCESS)
         {
@@ -2434,13 +2443,6 @@ doca_error_t rdma_multi_conn_recv_export_and_connect(struct rdma_resources *reso
         }
         /* Write and read connection details to the receiver */
         /* result = write_read_connection(resources->cfg, resources, i); */
-        result = sock_recv_buffer(resources->remote_rdma_conn_descriptor, &resources->remote_rdma_conn_descriptor_size,
-                                  MAX_RDMA_DESCRIPTOR_SZ, sock_fd);
-        if (result != DOCA_SUCCESS)
-        {
-            DOCA_LOG_ERR("Failed to write and read connection details from receiver: %s", doca_error_get_descr(result));
-            return result;
-        }
         // print_buffer_hex(resources->rdma_conn_descriptor, resources->rdma_conn_descriptor_size);
 
         // print_buffer_hex(resources->remote_rdma_conn_descriptor, resources->remote_rdma_conn_descriptor_size);
@@ -2453,11 +2455,11 @@ doca_error_t rdma_multi_conn_recv_export_and_connect(struct rdma_resources *reso
                          doca_error_get_descr(result));
 
         /* Free remote connection descriptor */
-        free(resources->remote_rdma_conn_descriptor);
-        resources->remote_rdma_conn_descriptor = NULL;
 
         DOCA_LOG_INFO("RDMA connection [%d] is establshed", i);
     }
+    free(resources->remote_rdma_conn_descriptor);
+    resources->remote_rdma_conn_descriptor = NULL;
     DOCA_LOG_INFO("All [%d] RDMA connections have been establshed", n_connections);
 
     return result;
