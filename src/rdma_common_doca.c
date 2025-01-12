@@ -350,7 +350,7 @@ static doca_error_t msg_sz_callback(void *param, void *config)
         return DOCA_ERROR_INVALID_VALUE;
     }
 
-    rdma_cfg->n_msg = (uint32_t)msg_sz;
+    rdma_cfg->msg_sz = (uint32_t)msg_sz;
 
     return DOCA_SUCCESS;
 }
