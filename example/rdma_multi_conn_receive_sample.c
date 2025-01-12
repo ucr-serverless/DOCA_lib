@@ -473,7 +473,7 @@ doca_error_t rdma_multi_conn_receive(struct rdma_config *cfg)
 
     /* Allocating resources */
     result = allocate_rdma_resources(cfg, mmap_permissions, rdma_permissions, doca_rdma_cap_task_receive_is_supported,
-                                     &resources, resources.cfg->msg_sz);
+                                     &resources, cfg->msg_sz, cfg->num_connections);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to allocate RDMA Resources: %s", doca_error_get_descr(result));

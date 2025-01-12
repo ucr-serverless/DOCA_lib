@@ -71,6 +71,7 @@
 
 #define DEFAULT_MMAP_EXPT_LISTEN_ADDR "0.0.0.0"
 #define DEFAULT_MMAP_EXPT_LISTEN_PORT "10005"
+#define MAX_RDMA_CONN_NUM (1024)
 
 #ifdef __cplusplus
 extern "C"
@@ -211,7 +212,7 @@ extern "C"
      */
     doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mmap_permissions,
                                          const uint32_t rdma_permissions, tasks_check func,
-                                         struct rdma_resources *resources, uint32_t m_size);
+                                         struct rdma_resources *resources, uint32_t m_size, uint16_t n_conn);
 
     /*
      * Destroy DOCA RDMA resources

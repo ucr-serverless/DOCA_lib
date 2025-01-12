@@ -1003,7 +1003,7 @@ doca_error_t register_rdma_common_params(void)
 
 doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mmap_permissions,
                                      const uint32_t rdma_permissions, tasks_check func,
-                                     struct rdma_resources *resources, uint32_t m_size)
+                                     struct rdma_resources *resources, uint32_t m_size, uint16_t n_conn)
 {
     doca_error_t result, tmp_result;
 
@@ -1107,12 +1107,12 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     }
 
     /* Set num_connections to DOCA RDMA */
-    // result = doca_rdma_set_max_num_connections(resources->rdma, cfg->num_connections);
-    // if (result != DOCA_SUCCESS)
-    // {
-    //     DOCA_LOG_ERR("Failed to set max_num_connections to DOCA RDMA: %s", doca_error_get_descr(result));
-    //     goto destroy_doca_rdma;
-    // }
+    result = doca_rdma_set_max_num_connections(resources->rdma, n_conn);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set max_num_connections to DOCA RDMA: %s", doca_error_get_descr(result));
+        goto destroy_doca_rdma;
+    }
 
     /* Set transport type */
     result = doca_rdma_set_transport_type(resources->rdma, cfg->transport_type);
