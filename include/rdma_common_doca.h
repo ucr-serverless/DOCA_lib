@@ -210,7 +210,7 @@ extern "C"
      */
     doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mmap_permissions,
                                          const uint32_t rdma_permissions, tasks_check func,
-                                         struct rdma_resources *resources);
+                                         struct rdma_resources *resources, uint32_t m_size);
 
     /*
      * Destroy DOCA RDMA resources
