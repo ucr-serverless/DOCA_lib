@@ -170,6 +170,13 @@ static doca_error_t bool_callback(void *param, void *config)
 
     return DOCA_SUCCESS;
 }
+static doca_error_t epoll_callback(void *param, void *config)
+{
+    struct rdma_config *app_cfg = (struct rdma_config *)config;
+    app_cfg->is_epoll = *(bool *)param;
+
+    return DOCA_SUCCESS;
+}
 /*
  * ARGP Callback - Handle exported descriptor file path parameter
  *
@@ -303,6 +310,36 @@ static doca_error_t gid_index_param_callback(void *param, void *config)
     return DOCA_SUCCESS;
 }
 
+static doca_error_t n_msg_callback(void *param, void *config)
+{
+    struct rdma_config *rdma_cfg = (struct rdma_config *)config;
+    const int n_msg = *(uint32_t *)param;
+
+    if (n_msg < 0)
+    {
+        DOCA_LOG_ERR("GID index for DOCA RDMA must be non-negative");
+        return DOCA_ERROR_INVALID_VALUE;
+    }
+
+    rdma_cfg->n_msg = (uint32_t)n_msg;
+
+    return DOCA_SUCCESS;
+}
+static doca_error_t msg_sz_callback(void *param, void *config)
+{
+    struct rdma_config *rdma_cfg = (struct rdma_config *)config;
+    const int msg_sz = *(uint32_t *)param;
+
+    if (msg_sz < 0)
+    {
+        DOCA_LOG_ERR("GID index for DOCA RDMA must be non-negative");
+        return DOCA_ERROR_INVALID_VALUE;
+    }
+
+    rdma_cfg->n_msg = (uint32_t)msg_sz;
+
+    return DOCA_SUCCESS;
+}
 doca_error_t register_rdma_send_string_param(void)
 {
     struct doca_argp_param *send_string_param;
@@ -679,7 +716,44 @@ doca_error_t register_rdma_common_params(void)
     struct doca_argp_param *sock_ip_param;
     struct doca_argp_param *transport_type_param;
     struct doca_argp_param *is_host_export_param;
+    struct doca_argp_param *is_epoll_param;
+    struct doca_argp_param *n_msg_param;
+    struct doca_argp_param *msg_sz_param;
 
+    result = doca_argp_param_create(&n_msg_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(n_msg_param, "n");
+    doca_argp_param_set_long_name(n_msg_param, "n_msg");
+    doca_argp_param_set_description(n_msg_param, "number of message in perf test");
+    doca_argp_param_set_callback(n_msg_param, n_msg_callback);
+    doca_argp_param_set_type(n_msg_param, DOCA_ARGP_TYPE_INT);
+    result = doca_argp_register_param(n_msg_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    result = doca_argp_param_create(&msg_sz_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(msg_sz_param, "n");
+    doca_argp_param_set_long_name(msg_sz_param, "msg_sz");
+    doca_argp_param_set_description(msg_sz_param, "number of message in perf test");
+    doca_argp_param_set_callback(msg_sz_param, msg_sz_callback);
+    doca_argp_param_set_type(msg_sz_param, DOCA_ARGP_TYPE_INT);
+    result = doca_argp_register_param(msg_sz_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
     /* Create and register device param */
     result = doca_argp_param_create(&is_host_export_param);
     if (result != DOCA_SUCCESS)
@@ -699,6 +773,23 @@ doca_error_t register_rdma_common_params(void)
         return result;
     }
 
+    result = doca_argp_param_create(&is_epoll_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(is_epoll_param, "ep");
+    doca_argp_param_set_long_name(is_epoll_param, "epoll");
+    doca_argp_param_set_description(is_epoll_param, "flags on whether to use epoll");
+    doca_argp_param_set_callback(is_epoll_param, epoll_callback);
+    doca_argp_param_set_type(is_epoll_param, DOCA_ARGP_TYPE_BOOLEAN);
+    result = doca_argp_register_param(is_epoll_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
     /* Create and register device param */
     result = doca_argp_param_create(&device_param);
     if (result != DOCA_SUCCESS)
@@ -2016,4 +2107,82 @@ free_task:
 uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task)
 {
     return ntohl(doca_rdma_task_receive_get_result_immediate_data(recv_task));
+}
+
+doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg,
+                                          struct rdma_cb_config *cb_cfg)
+{
+    union doca_data ctx_user_data = {0};
+    uint32_t mmap_permissions = DOCA_ACCESS_FLAG_LOCAL_READ_WRITE;
+    uint32_t rdma_permissions = DOCA_ACCESS_FLAG_LOCAL_READ_WRITE;
+    doca_error_t result, tmp_result;
+
+    /* Allocating resources */
+    result = allocate_rdma_resources(cfg, mmap_permissions, rdma_permissions, doca_rdma_cap_task_receive_is_supported,
+                                     resources);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to allocate RDMA Resources: %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    result = doca_rdma_task_receive_set_conf(resources->rdma, cb_cfg->msg_recv_cb, cb_cfg->msg_recv_err_cb,
+                                             DEFAULT_RDMA_TASK_NUM);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set configurations for RDMA receive task: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+    result = doca_rdma_task_send_imm_set_conf(resources->rdma, cb_cfg->send_imm_task_comp_cb,
+                                              cb_cfg->send_imm_task_comp_err_cb, DEFAULT_RDMA_TASK_NUM);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set configurations for RDMA send task: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+
+    result = doca_ctx_set_state_changed_cb(resources->rdma_ctx, cb_cfg->state_change_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set state change callback for RDMA context: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+
+    /* Include the program's resources in user data of context to be used in callbacks */
+    ctx_user_data.ptr = cb_cfg->ctx_user_data;
+    result = doca_ctx_set_user_data(resources->rdma_ctx, ctx_user_data);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set context user data: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+
+    result = doca_rdma_set_connection_state_callbacks(
+        resources->rdma, cb_cfg->doca_rdma_connect_request_cb, cb_cfg->doca_rdma_connect_established_cb,
+        cb_cfg->doca_rdma_connect_failure_cb, cb_cfg->doca_rdma_disconnect_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set rdma cm callback configuration, error: %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    /* Start RDMA context */
+    result = doca_ctx_start(resources->rdma_ctx);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to start RDMA context: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+
+    result = resources->first_encountered_error;
+    close(cfg->sock_fd);
+
+destroy_resources:
+    tmp_result = destroy_rdma_resources(resources, cfg);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to destroy DOCA RDMA resources: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+    return result;
 }

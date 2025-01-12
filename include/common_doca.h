@@ -292,6 +292,8 @@ extern "C"
     double calculate_timediff_ms(struct timespec *end, struct timespec *start);
     double calculate_timediff_usec(struct timespec *end, struct timespec *start);
     double calculate_timediff_nsec(struct timespec *end, struct timespec *start);
+    doca_error_t init_inventory(struct doca_buf_inventory **inv, uint64_t num);
+    doca_error_t destroy_inventory(struct doca_buf_inventory *inv);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

@@ -975,3 +975,56 @@ double calculate_timediff_nsec(struct timespec *end, struct timespec *start)
 
     return (double)diff;
 }
+doca_error_t init_inventory(struct doca_buf_inventory **inv, uint64_t num)
+{
+    doca_error_t result;
+
+    /* Create DOCA buffer inventory */
+    result = doca_buf_inventory_create(num, inv);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create DOCA buffer inventory: %s", doca_error_get_descr(result));
+        goto destroy_buf_inventory;
+    }
+
+    /* Start DOCA buffer inventory */
+    result = doca_buf_inventory_start(*inv);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to start DOCA buffer inventory: %s", doca_error_get_descr(result));
+        goto stop_buf_inventory;
+    }
+    return DOCA_SUCCESS;
+stop_buf_inventory:
+    result = doca_buf_inventory_stop(*inv);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to stop DOCA buffer inventory: %s", doca_error_get_descr(result));
+        DOCA_ERROR_PROPAGATE(result, result);
+    }
+destroy_buf_inventory:
+    result = doca_buf_inventory_destroy(*inv);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to destroy DOCA buffer inventory: %s", doca_error_get_descr(result));
+        DOCA_ERROR_PROPAGATE(result, result);
+    }
+    return result;
+}
+doca_error_t destroy_inventory(struct doca_buf_inventory *inv)
+{
+    doca_error_t result;
+    result = doca_buf_inventory_stop(inv);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to stop DOCA buffer inventory: %s", doca_error_get_descr(result));
+        DOCA_ERROR_PROPAGATE(result, result);
+    }
+    result = doca_buf_inventory_destroy(inv);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to destroy DOCA buffer inventory: %s", doca_error_get_descr(result));
+        DOCA_ERROR_PROPAGATE(result, result);
+    }
+    return result;
+}

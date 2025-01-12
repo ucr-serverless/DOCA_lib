@@ -42,7 +42,10 @@
 #include <doca_sync_event.h>
 
 #include "common_doca.h"
+#include "doca_ctx.h"
 
+#define NUM_RDMA_TASKS (1)
+#define DEFAULT_RDMA_TASK_NUM (4096)
 #define MEM_RANGE_LEN (4096)                 /* DOCA mmap memory range length */
 #define INVENTORY_NUM_INITIAL_ELEMENTS (16)  /* Number of DOCA inventory initial elements */
 #define MAX_USER_ARG_SIZE (256)              /* Maximum size of user input argument */
@@ -54,7 +57,6 @@
 #define DEFAULT_REMOTE_CONNECTION_DESC_PATH "/tmp/remote_connection_desc_path.txt"
 /* Default path to read/save the remote mmap connection descriptor that should be passed to the other side */
 #define DEFAULT_REMOTE_RESOURCE_CONNECTION_DESC_PATH "/tmp/remote_resource_desc_path.txt"
-#define NUM_RDMA_TASKS (1)         /* Number of RDMA tasks*/
 #define SLEEP_IN_NANOS (10 * 1000) /* Sample the task every 10 microseconds  */
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 /* Server address length, long enough for converting from ascii to hex and including the ':' symbols */
@@ -65,7 +67,7 @@
 #define CLIENT_NAME "Client"
 #define DEFAULT_RDMA_CM_PORT (13579)
 #define MAX_NUM_CONNECTIONS (8)
-#define MAX_RDMA_DESCRIPTOR_SZ 1024
+#define MAX_RDMA_DESCRIPTOR_SZ (1024)
 
 #define DEFAULT_MMAP_EXPT_LISTEN_ADDR "0.0.0.0"
 #define DEFAULT_MMAP_EXPT_LISTEN_PORT "10005"
@@ -118,8 +120,31 @@ extern "C"
         uint64_t host_buf_addr;
         uint64_t host_buf_range;
         struct doca_mmap *host_mmap;
+        bool is_epoll;
+        uint32_t msg_sz;
+        uint32_t n_msg;
     };
 
+    struct rdma_cb_config
+    {
+        /* User specified callback when task completed successfully */
+        doca_rdma_task_send_imm_completion_cb_t send_imm_task_comp_cb;
+        /* User specified callback when task completed with error */
+        doca_rdma_task_send_imm_completion_cb_t send_imm_task_comp_err_cb;
+        /* User specified callback when a message is received */
+        doca_rdma_task_receive_completion_cb_t msg_recv_cb;
+
+        doca_rdma_task_receive_completion_cb_t msg_recv_err_cb;
+        /* Whether need to configure data_path related event callback */
+        bool data_path_mode;
+        /* User specified context data */
+        void *ctx_user_data;
+        doca_rdma_connection_request_cb_t doca_rdma_connect_request_cb;
+        doca_rdma_connection_established_cb_t doca_rdma_connect_established_cb;
+        doca_rdma_connection_failure_cb_t doca_rdma_connect_failure_cb;
+        doca_rdma_connection_disconnection_cb_t doca_rdma_disconnect_cb;
+        doca_ctx_state_changed_callback_t state_change_cb;
+    };
     struct rdma_resources
     {
         struct rdma_config *cfg;                      /* RDMA samples configuration parameters */
@@ -167,6 +192,8 @@ extern "C"
                                              */
         bool require_remote_mmap;           /* Indicate whether need remote mmap information, for example for
                                   rdma_task_read/write */
+        struct timespec start_time;
+        struct timespec end_time;
     };
 
     /*
@@ -438,6 +465,8 @@ extern "C"
                                       struct doca_rdma_task_send_imm **task);
     /* can only be called in success recv_task callback */
     uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task);
+    doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg,
+                                              struct rdma_cb_config *cb_cfg);
 #ifdef __cplusplus
 }
 #endif
