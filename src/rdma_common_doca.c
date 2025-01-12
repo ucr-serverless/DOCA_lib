@@ -776,9 +776,9 @@ doca_error_t register_rdma_common_params(void)
         DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
         return result;
     }
-    doca_argp_param_set_short_name(msg_sz_param, "n");
+    doca_argp_param_set_short_name(msg_sz_param, "s");
     doca_argp_param_set_long_name(msg_sz_param, "msg_sz");
-    doca_argp_param_set_description(msg_sz_param, "number of message in perf test");
+    doca_argp_param_set_description(msg_sz_param, "size of the message");
     doca_argp_param_set_callback(msg_sz_param, msg_sz_callback);
     doca_argp_param_set_type(msg_sz_param, DOCA_ARGP_TYPE_INT);
     result = doca_argp_register_param(msg_sz_param);
