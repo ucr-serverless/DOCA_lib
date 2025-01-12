@@ -753,7 +753,6 @@ doca_error_t register_rdma_common_params(void)
         DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
         return result;
     }
-    return DOCA_SUCCESS;
     result = doca_argp_param_create(&n_msg_param);
     if (result != DOCA_SUCCESS)
     {
