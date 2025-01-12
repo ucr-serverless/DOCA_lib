@@ -1021,6 +1021,7 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
     if (m_size == 0)
     {
         DOCA_LOG_ERR("memory size is zero");
+        goto close_doca_dev;
     }
     resources->mmap_memrange = calloc(m_size, sizeof(char));
     if (resources->mmap_memrange == NULL)
