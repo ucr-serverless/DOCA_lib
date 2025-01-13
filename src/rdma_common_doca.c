@@ -2253,14 +2253,14 @@ doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, stru
         goto destroy_resources;
     }
 
-    result = doca_rdma_set_connection_state_callbacks(
-        resources->rdma, cb_cfg->doca_rdma_connect_request_cb, cb_cfg->doca_rdma_connect_established_cb,
-        cb_cfg->doca_rdma_connect_failure_cb, cb_cfg->doca_rdma_disconnect_cb);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to set rdma cm callback configuration, error: %s", doca_error_get_descr(result));
-        return result;
-    }
+    // result = doca_rdma_set_connection_state_callbacks(
+    //     resources->rdma, cb_cfg->doca_rdma_connect_request_cb, cb_cfg->doca_rdma_connect_established_cb,
+    //     cb_cfg->doca_rdma_connect_failure_cb, cb_cfg->doca_rdma_disconnect_cb);
+    // if (result != DOCA_SUCCESS)
+    // {
+    //     DOCA_LOG_ERR("Failed to set rdma cm callback configuration, error: %s", doca_error_get_descr(result));
+    //     return result;
+    // }
 
     /* Start RDMA context */
     result = doca_ctx_start(resources->rdma_ctx);
@@ -2270,7 +2270,6 @@ doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, stru
         goto destroy_resources;
     }
 
-    result = resources->first_encountered_error;
     return result;
 
 destroy_resources:

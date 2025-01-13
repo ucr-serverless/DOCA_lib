@@ -470,6 +470,7 @@ doca_error_t rdma_multi_conn_receive(struct rdma_config *cfg)
     //     .tv_nsec = SLEEP_IN_NANOS,
     // };
     doca_error_t result, tmp_result;
+    cfg->num_connections = 1;
 
     /* Allocating resources */
     result = allocate_rdma_resources(cfg, mmap_permissions, rdma_permissions, doca_rdma_cap_task_receive_is_supported,
