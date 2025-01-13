@@ -2377,7 +2377,8 @@ void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, un
     struct doca_buf *dst_buf = NULL;
 
     dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
-    void* data = doca_buf_get_data(dst_buf, &data);
+    void* data;
+    result = doca_buf_get_data(dst_buf, &data);
     DOCA_LOG_INFO("content of the data is %s", (char *)data);
     result = doca_buf_dec_refcount(dst_buf, NULL);
     if (result != DOCA_SUCCESS)
