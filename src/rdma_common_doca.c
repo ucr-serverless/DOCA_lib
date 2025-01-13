@@ -2124,6 +2124,22 @@ free_task:
     doca_task_free(doca_rdma_task_receive_as_task(*task));
     return result;
 }
+doca_error_t submit_recv_task_retry(struct doca_rdma *rdma, struct doca_buf *buf, union doca_data data,
+                                    struct doca_rdma_task_receive **task)
+{
+    doca_error_t result;
+    result = submit_recv_task(rdma, buf, data, task);
+    while (result == DOCA_ERROR_AGAIN)
+    {
+        result = submit_recv_task(rdma, buf, data, task);
+    };
+    JUMP_ON_DOCA_ERROR(result, free_recv_task);
+    return DOCA_SUCCESS;
+
+free_recv_task:
+    doca_task_free(doca_rdma_task_receive_as_task(*task));
+    return result;
+}
 doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_connection *connection, struct doca_buf *buf,
                                   uint32_t imme, union doca_data task_data, struct doca_rdma_task_send_imm **task)
 {
@@ -2154,6 +2170,23 @@ free_task:
     return result;
 }
 
+doca_error_t submit_send_imm_task_retry(struct doca_rdma *rdma, struct doca_rdma_connection *connection,
+                                        struct doca_buf *buf, uint32_t imme, union doca_data task_data,
+                                        struct doca_rdma_task_send_imm **task)
+{
+    doca_error_t result;
+    result = submit_send_imm_task(rdma, connection, buf, imme, task_data, task);
+    while (result == DOCA_ERROR_AGAIN)
+    {
+        result = submit_send_imm_task(rdma, connection, buf, imme, task_data, task);
+    };
+    JUMP_ON_DOCA_ERROR(result, free_send_task);
+    return DOCA_SUCCESS;
+
+free_send_task:
+    doca_task_free(doca_rdma_task_send_imm_as_task(*task));
+    return result;
+}
 uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task)
 {
     return ntohl(doca_rdma_task_receive_get_result_immediate_data(recv_task));

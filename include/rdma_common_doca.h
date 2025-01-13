@@ -66,12 +66,11 @@
 #define SERVER_NAME "Server"
 #define CLIENT_NAME "Client"
 #define DEFAULT_RDMA_CM_PORT (13579)
-#define MAX_NUM_CONNECTIONS (8)
+#define MAX_NUM_CONNECTIONS (2048)
 #define MAX_RDMA_DESCRIPTOR_SZ (1024)
 
 #define DEFAULT_MMAP_EXPT_LISTEN_ADDR "0.0.0.0"
 #define DEFAULT_MMAP_EXPT_LISTEN_PORT "10005"
-#define MAX_RDMA_CONN_NUM (1024)
 
 #ifdef __cplusplus
 extern "C"
@@ -465,9 +464,14 @@ extern "C"
 
     doca_error_t submit_recv_task(struct doca_rdma *rdma, struct doca_buf *buf, union doca_data data,
                                   struct doca_rdma_task_receive **task);
+    doca_error_t submit_recv_task_retry(struct doca_rdma *rdma, struct doca_buf *buf, union doca_data data,
+                                        struct doca_rdma_task_receive **task);
     doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_connection *connection,
                                       struct doca_buf *buf, uint32_t imme, union doca_data task_data,
                                       struct doca_rdma_task_send_imm **task);
+    doca_error_t submit_send_imm_task_retry(struct doca_rdma *rdma, struct doca_rdma_connection *connection,
+                                            struct doca_buf *buf, uint32_t imme, union doca_data task_data,
+                                            struct doca_rdma_task_send_imm **task);
     /* can only be called in success recv_task callback */
     uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task);
     doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg,
