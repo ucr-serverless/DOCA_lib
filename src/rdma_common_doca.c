@@ -37,6 +37,7 @@
 
 #include "common_doca.h"
 #include "doca_buf.h"
+#include "doca_pe.h"
 #include "doca_rdma.h"
 #include "log.h"
 #include "rdma_common_doca.h"
@@ -2305,23 +2306,21 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
 
     doca_buf_reset_data_len(buf);
 
-    resources->n_received_req++;
+    // resubmit tasks
+    result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_task));
+    JUMP_ON_DOCA_ERROR(result, free_task);
 
-    result = submit_send_imm_task(resources->rdma, rdma_connection, buf, 0, task_user_data, &send_task);
-    JUMP_ON_DOCA_ERROR(result, free_send_task);
+    result = submit_send_imm_task_retry(resources->rdma, rdma_connection, buf, 0, task_user_data, &send_task);
+    JUMP_ON_DOCA_ERROR(result, free_task);
+    return;
 
-    DOCA_LOG_INFO("send task submitted");
-    goto free_task;
-
-free_send_task:
-    doca_task_free(doca_rdma_task_send_imm_as_task(send_task));
+free_task:
     result = doca_buf_dec_refcount(buf, NULL);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to decrease dst_buf count: %s", doca_error_get_descr(result));
         DOCA_ERROR_PROPAGATE(result, result);
     }
-free_task:
     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_task));
 }
 
