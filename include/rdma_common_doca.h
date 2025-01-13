@@ -115,8 +115,10 @@ extern "C"
                                                 **/
         int sock_fd;
         int sock_port;
-        bool is_host_export;
+        bool is_host_export; // wether to receive host exported buffer
+        bool on_path;        // true for off path, false for onpath
         void *host_descriptor;
+
         uint32_t host_descriptor_size;
         uint64_t host_buf_addr;
         uint64_t host_buf_range;

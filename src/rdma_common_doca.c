@@ -52,6 +52,7 @@ void init_rdma_config(struct rdma_config *cfg)
     cfg->use_rdma_cm = false;
     cfg->sock_fd = 0;
     cfg->is_host_export = false;
+    cfg->on_path = false;
     cfg->is_epoll = false;
     cfg->n_msg = 0;
     cfg->msg_sz = 1;
@@ -195,6 +196,13 @@ static doca_error_t bool_callback(void *param, void *config)
 {
     struct rdma_config *app_cfg = (struct rdma_config *)config;
     app_cfg->is_host_export = *(bool *)param;
+
+    return DOCA_SUCCESS;
+}
+static doca_error_t on_path_callback(void *param, void *config)
+{
+    struct rdma_config *app_cfg = (struct rdma_config *)config;
+    app_cfg->on_path = *(bool *)param;
 
     return DOCA_SUCCESS;
 }
@@ -744,6 +752,7 @@ doca_error_t register_rdma_common_params(void)
     struct doca_argp_param *sock_ip_param;
     struct doca_argp_param *transport_type_param;
     struct doca_argp_param *is_host_export_param;
+    struct doca_argp_param *on_path_param;
     struct doca_argp_param *is_epoll_param;
     struct doca_argp_param *n_msg_param;
     struct doca_argp_param *msg_sz_param;
@@ -820,6 +829,23 @@ doca_error_t register_rdma_common_params(void)
         return result;
     }
 
+    result = doca_argp_param_create(&on_path_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(on_path_param, "op");
+    doca_argp_param_set_long_name(on_path_param, "on_path");
+    doca_argp_param_set_description(on_path_param, "flags to decide whethe use off path or on path");
+    doca_argp_param_set_callback(on_path_param, on_path_callback);
+    doca_argp_param_set_type(on_path_param, DOCA_ARGP_TYPE_BOOLEAN);
+    result = doca_argp_register_param(on_path_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
     result = doca_argp_param_create(&is_epoll_param);
     if (result != DOCA_SUCCESS)
     {
@@ -2377,7 +2403,7 @@ void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, un
     struct doca_buf *dst_buf = NULL;
 
     dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
-    void* data;
+    void *data;
     result = doca_buf_get_data(dst_buf, &data);
     DOCA_LOG_INFO("content of the data is %s", (char *)data);
     result = doca_buf_dec_refcount(dst_buf, NULL);
