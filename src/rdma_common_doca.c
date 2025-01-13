@@ -1347,7 +1347,10 @@ doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdm
     }
 
     /* Free DOCA mmap memory range */
-    free(resources->mmap_memrange);
+    if (resources->mmap_memrange)
+    {
+        free(resources->mmap_memrange);
+    }
 
     /* Destroy DOCA mmap */
     tmp_result = doca_mmap_destroy(resources->mmap);
@@ -2323,6 +2326,8 @@ void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *send_
 void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_task, union doca_data task_user_data,
                                   union doca_data ctx_user_data)
 {
+
+    DOCA_LOG_INFO("message received");
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
     doca_error_t result;
     struct doca_rdma_task_send_imm *send_task;
@@ -2332,6 +2337,10 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
     struct doca_rdma_connection *rdma_connection = (struct doca_rdma_connection *)conn;
 
     struct doca_buf *buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
+    if (buf == NULL)
+    {
+        DOCA_LOG_ERR("get src buf fail");
+    }
 
     doca_buf_reset_data_len(buf);
 
