@@ -2129,11 +2129,19 @@ doca_error_t submit_recv_task_retry(struct doca_rdma *rdma, struct doca_buf *buf
                                     struct doca_rdma_task_receive **task)
 {
     doca_error_t result;
-    result = submit_recv_task(rdma, buf, data, task);
-    while (result == DOCA_ERROR_AGAIN)
+
+    result = doca_rdma_task_receive_allocate_init(rdma, buf, data, task);
+    if (result != DOCA_SUCCESS)
     {
-        result = submit_recv_task(rdma, buf, data, task);
-    };
+        DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+        return result;
+    }
+    result = doca_task_submit(doca_rdma_task_receive_as_task(*task));
+    if (result != DOCA_SUCCESS)
+        while (result == DOCA_ERROR_AGAIN)
+        {
+            result = doca_task_submit(doca_rdma_task_receive_as_task(*task));
+        };
     JUMP_ON_DOCA_ERROR(result, free_recv_task);
     return DOCA_SUCCESS;
 
@@ -2176,10 +2184,22 @@ doca_error_t submit_send_imm_task_retry(struct doca_rdma *rdma, struct doca_rdma
                                         struct doca_rdma_task_send_imm **task)
 {
     doca_error_t result;
-    result = submit_send_imm_task(rdma, connection, buf, imme, task_data, task);
+    // convert to big endiane
+    doca_be32_t imm = htonl(imme);
+
+    result = doca_rdma_task_send_imm_allocate_init(rdma, connection, buf, imm, task_data, task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    /* Submit RDMA receive task */
+    DOCA_LOG_INFO("Submitting RDMA send imm task");
+    result = doca_task_submit(doca_rdma_task_send_imm_as_task(*task));
     while (result == DOCA_ERROR_AGAIN)
     {
-        result = submit_send_imm_task(rdma, connection, buf, imme, task_data, task);
+        result = doca_task_submit(doca_rdma_task_send_imm_as_task(*task));
     };
     JUMP_ON_DOCA_ERROR(result, free_send_task);
     return DOCA_SUCCESS;
@@ -2260,37 +2280,46 @@ destroy_resources:
     return tmp_result;
 }
 
-void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *task, union doca_data task_user_data,
+void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *send_task, union doca_data task_user_data,
                                        union doca_data ctx_user_data)
 {
-    (void)task_user_data;
-    (void)ctx_user_data;
-    doca_error_t result;
+    // struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
+    // doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
+    struct doca_buf *src_buf = NULL;
+    doca_error_t result = DOCA_SUCCESS, tmp_result;
 
-    struct doca_buf *src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(task);
-    result = doca_buf_dec_refcount(src_buf, NULL);
-    if (result != DOCA_SUCCESS)
+    DOCA_LOG_INFO("RDMA send task was done successfully");
+
+    src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(send_task);
+    tmp_result = doca_buf_dec_refcount(src_buf, NULL);
+    if (tmp_result != DOCA_SUCCESS)
     {
-        DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(result));
+        DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
     }
-    doca_task_free(doca_rdma_task_send_imm_as_task(task));
+    doca_task_free(doca_rdma_task_send_imm_as_task(send_task));
 }
 
-void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *task, union doca_data task_user_data,
+void basic_send_imm_completed_err_callback(struct doca_rdma_task_send_imm *send_task, union doca_data task_user_data,
                                            union doca_data ctx_user_data)
 {
-    (void)task_user_data;
-    (void)ctx_user_data;
+    // struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
+    struct doca_task *task = doca_rdma_task_send_imm_as_task(send_task);
+    doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
     doca_error_t result;
-    struct doca_buf *src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(task);
+
+    struct doca_buf *src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(send_task);
+    /* Update that an error was encountered */
+    result = doca_task_get_status(task);
+    DOCA_ERROR_PROPAGATE(*first_encountered_error, result);
+    DOCA_LOG_ERR("RDMA send task failed: %s", doca_error_get_descr(result));
+
+    doca_task_free(task);
     result = doca_buf_dec_refcount(src_buf, NULL);
     if (result != DOCA_SUCCESS)
-    {
         DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(result));
-    }
-    doca_task_free(doca_rdma_task_send_imm_as_task(task));
-    DOCA_LOG_INFO("send req error");
 }
+
 void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_task, union doca_data task_user_data,
                                   union doca_data ctx_user_data)
 {
@@ -2310,7 +2339,7 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
     result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_task));
     JUMP_ON_DOCA_ERROR(result, free_task);
 
-    result = submit_send_imm_task_retry(resources->rdma, rdma_connection, buf, 0, task_user_data, &send_task);
+    result = submit_send_imm_task(resources->rdma, rdma_connection, buf, 0, task_user_data, &send_task);
     JUMP_ON_DOCA_ERROR(result, free_task);
     return;
 

@@ -150,7 +150,7 @@ extern "C"
     };
     struct rdma_resources
     {
-        uint32_t id; // for identify thread
+        uint32_t id;                                  // for identify thread
         struct rdma_config *cfg;                      /* RDMA samples configuration parameters */
         struct doca_dev *doca_device;                 /* DOCA device */
         struct doca_pe *pe;                           /* DOCA progress engine */
