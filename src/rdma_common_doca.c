@@ -2328,9 +2328,9 @@ void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, un
                             union doca_data ctx_user_data)
 {
 
-    doca_error_t result;
+    // doca_error_t result;
 
-    struct doca_buf *dst_buf = NULL;
+    // struct doca_buf *dst_buf = NULL;
 
     // dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
     // result = doca_buf_dec_refcount(dst_buf, NULL);
