@@ -2332,13 +2332,13 @@ void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, un
 
     struct doca_buf *dst_buf = NULL;
 
-    dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
-    result = doca_buf_dec_refcount(dst_buf, NULL);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to decrease dst_buf count: %s", doca_error_get_descr(result));
-        DOCA_ERROR_PROPAGATE(result, result);
-    }
+    // dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
+    // result = doca_buf_dec_refcount(dst_buf, NULL);
+    // if (result != DOCA_SUCCESS)
+    // {
+    //     DOCA_LOG_ERR("Failed to decrease dst_buf count: %s", doca_error_get_descr(result));
+    //     DOCA_ERROR_PROPAGATE(result, result);
+    // }
 
     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_task));
 }
