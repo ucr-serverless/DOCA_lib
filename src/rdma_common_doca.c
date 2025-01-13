@@ -380,7 +380,7 @@ doca_error_t register_rdma_send_string_param(void)
         DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
         return result;
     }
-    doca_argp_param_set_short_name(send_string_param, "s");
+    doca_argp_param_set_short_name(send_string_param, "ss");
     doca_argp_param_set_long_name(send_string_param, "send-string");
     doca_argp_param_set_arguments(send_string_param, "<Send string>");
     doca_argp_param_set_description(
