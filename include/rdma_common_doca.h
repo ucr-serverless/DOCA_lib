@@ -43,6 +43,7 @@
 #include <doca_sync_event.h>
 
 #include "common_doca.h"
+#include "dma_common_doca.h"
 #include "doca_ctx.h"
 
 #define NUM_RDMA_TASKS (1)
@@ -115,8 +116,9 @@ extern "C"
                                                 **/
         int sock_fd;
         int sock_port;
-        bool is_host_export; // wether to receive host exported buffer
-        bool on_path;        // true for off path, false for onpath
+        bool is_host_export; // wether to receive host exported buffer(true for the on-path/off-path expt, false for the
+                             // host-DPU channel latency expt)
+        bool on_path;        // true for off path, false for onpath(when the is_host_export is true)
         void *host_descriptor;
 
         uint32_t host_descriptor_size;
@@ -201,7 +203,9 @@ extern "C"
         struct timespec start_time;
         struct timespec end_time;
         uint32_t n_received_req;
+        struct dma_obj dma_res;
     };
+
     void init_rdma_config(struct rdma_config *cfg);
 
     /*
@@ -511,6 +515,7 @@ extern "C"
     doca_error_t rdma_multi_conn_send_export_and_connect(struct rdma_resources *resources,
                                                          struct doca_rdma_connection **connections,
                                                          uint32_t n_connections, int sock_fd);
+    doca_error_t allocate_dma_with_rdma_dev(struct rdma_resources *resources, struct dma_cb *cb);
 
 #ifdef __cplusplus
 }

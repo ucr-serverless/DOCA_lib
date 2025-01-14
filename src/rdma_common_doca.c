@@ -36,7 +36,9 @@
 #include <doca_log.h>
 
 #include "common_doca.h"
+#include "dma_common_doca.h"
 #include "doca_buf.h"
+#include "doca_dma.h"
 #include "doca_pe.h"
 #include "doca_rdma.h"
 #include "log.h"
@@ -1079,17 +1081,6 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
         goto free_memrange;
     }
 
-    if (cfg->is_host_export == true && (cfg->host_descriptor != NULL))
-    {
-
-        DOCA_LOG_INFO("import from host");
-        result = doca_mmap_create_from_export(NULL, (const void *)cfg->host_descriptor, cfg->host_descriptor_size,
-                                              resources->doca_device, &cfg->host_mmap);
-
-        JUMP_ON_DOCA_ERROR(result, destroy_pe);
-        DOCA_LOG_INFO("import buffer success");
-    }
-
     result = doca_pe_create(&(resources->pe));
     if (result != DOCA_SUCCESS)
     {
@@ -1305,6 +1296,54 @@ static doca_error_t destroy_rdma_cm_resources(struct rdma_resources *resources)
     return result;
 }
 
+doca_error_t allocate_dma_with_rdma_dev(struct rdma_resources *resources, struct dma_cb *cb)
+{
+    /* Two buffers for source and destination */
+    union doca_data ctx_user_data = {0};
+    doca_error_t result, tmp_result;
+
+    assert(resources->doca_device);
+
+    result = doca_dma_create(resources->doca_device, &resources->dma_res.dma);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create DMA context: %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    resources->dma_res.dma_ctx = doca_dma_as_ctx(resources->dma_res.dma);
+
+    result = doca_ctx_set_state_changed_cb(resources->dma_res.dma_ctx, cb->state_change_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set DMA state change callback: %s", doca_error_get_descr(result));
+        goto destroy_dma;
+    }
+
+    result =
+        doca_dma_task_memcpy_set_conf(resources->dma_res.dma, cb->task_completion_cb, cb->task_error_cb, cb->n_task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set configurations for DMA memcpy task: %s", doca_error_get_descr(result));
+        goto destroy_dma;
+    }
+
+    /* Include resources in user data of context to be used in callbacks */
+    ctx_user_data.ptr = resources;
+    doca_ctx_set_user_data(resources->dma_res.dma_ctx, ctx_user_data);
+
+    return result;
+
+destroy_dma:
+    tmp_result = doca_dma_destroy(resources->dma_res.dma);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+        DOCA_LOG_ERR("Failed to destroy DOCA DMA context: %s", doca_error_get_descr(tmp_result));
+    }
+    return result;
+}
+
 doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg)
 {
     doca_error_t result = DOCA_SUCCESS, tmp_result;
@@ -1354,6 +1393,16 @@ doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdm
     {
         DOCA_LOG_ERR("Failed to destroy DOCA RDMA: %s", doca_error_get_descr(tmp_result));
         DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+
+    if (resources->dma_res)
+    {
+        tmp_result = destroy_dma_res(resources->dma_res);
+        if (tmp_result != DOCA_SUCCESS)
+        {
+            DOCA_ERROR_PROPAGATE(result, tmp_result);
+            DOCA_LOG_ERR("Failed to destroy DOCA DMA context: %s", doca_error_get_descr(tmp_result));
+        }
     }
 
     /* Destroy DOCA progress engine */

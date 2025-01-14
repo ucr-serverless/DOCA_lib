@@ -37,6 +37,8 @@
 #define NS_PER_USEC 1E3
 #define USEC_PER_SEC 1E6
 #define MSEC_PER_SEC 1E3
+#define MAX_USER_ARG_SIZE (256)              /* Maximum size of user input argument */
+#define MAX_ARG_SIZE (MAX_USER_ARG_SIZE + 1) /* Maximum size of input argument */
 
 #ifdef CLOCK_MONOTONIC_RAW /* Defined in glibc bits/time.h */
 #define CLOCK_TYPE_ID CLOCK_MONOTONIC_RAW
