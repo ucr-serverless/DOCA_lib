@@ -2429,6 +2429,7 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
     }
 
     doca_buf_reset_data_len(buf);
+    print_doca_buf_len(buf);
 
     // resubmit tasks
     result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_task));

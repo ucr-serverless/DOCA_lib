@@ -311,6 +311,7 @@ extern "C"
     doca_error_t set_buf_to_len(struct doca_buf *buf);
     doca_error_t safe_buf_decounter(struct doca_buf *buf);
 
+    size_t print_doca_buf_len(struct doca_buf *buf);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

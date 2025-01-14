@@ -1065,3 +1065,11 @@ doca_error_t safe_buf_decounter(struct doca_buf *buf)
     }
     return result;
 }
+
+size_t print_doca_buf_len(struct doca_buf *buf)
+{
+    size_t len = 0;
+    doca_buf_get_data_len(buf, &len);
+    DOCA_LOG_INFO("buf data len is %zu", len);
+    return len;
+}
