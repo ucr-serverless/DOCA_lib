@@ -1028,3 +1028,40 @@ doca_error_t destroy_inventory(struct doca_buf_inventory *inv)
     }
     return result;
 }
+
+doca_error_t get_buf_from_inv_and_reset_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
+                                                 char *data_start, size_t len, struct doca_buf **buf)
+{
+    doca_error_t result = DOCA_SUCCESS;
+    result = doca_buf_inventory_buf_get_by_data(inv, mmap, data_start, len, buf);
+
+    JUMP_ON_DOCA_ERROR(result, error);
+
+    result = doca_buf_reset_data_len(*buf);
+    LOG_ON_FAILURE(result);
+error:
+    return result;
+}
+
+doca_error_t set_buf_to_len(struct doca_buf *buf)
+{
+    if (buf == NULL)
+    {
+        return DOCA_ERROR_EMPTY;
+    }
+    size_t len;
+    doca_buf_get_len(buf, &len);
+    doca_buf_set_data_len(buf, len);
+    return DOCA_SUCCESS;
+}
+doca_error_t safe_buf_decounter(struct doca_buf *buf)
+{
+    doca_error_t result = DOCA_SUCCESS;
+    uint16_t ref;
+    result = doca_buf_dec_refcount(buf, &ref);
+    if (result == DOCA_ERROR_BAD_STATE)
+    {
+        DOCA_LOG_INFO("The counter is already zero");
+    }
+    return result;
+}
