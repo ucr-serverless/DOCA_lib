@@ -771,7 +771,6 @@ doca_error_t register_rdma_common_params(void)
     doca_argp_param_set_description(thread_sz_param, "thread to create");
     doca_argp_param_set_callback(thread_sz_param, thread_sz_callback);
     doca_argp_param_set_type(thread_sz_param, DOCA_ARGP_TYPE_INT);
-    doca_argp_param_set_mandatory(thread_sz_param);
     result = doca_argp_register_param(thread_sz_param);
     if (result != DOCA_SUCCESS)
     {
@@ -1080,6 +1079,7 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
         DOCA_LOG_ERR("Failed to create DOCA mmap: %s", doca_error_get_descr(result));
         goto free_memrange;
     }
+    DOCA_LOG_INFO("the mmaprange is %p", resources->mmap_memrange);
 
     result = doca_pe_create(&(resources->pe));
     if (result != DOCA_SUCCESS)
@@ -2069,6 +2069,13 @@ doca_error_t set_default_config_value(struct rdma_config *cfg)
     cfg->host_descriptor = NULL;
     cfg->host_descriptor_size = 0;
     cfg->host_mmap = NULL;
+    cfg->sock_fd = 0;
+    cfg->is_host_export = false;
+    cfg->on_path = false;
+    cfg->is_epoll = false;
+    cfg->msg_sz = 1;
+    cfg->n_thread = 1;
+    cfg->is_perf_started = false;
 
     return DOCA_SUCCESS;
 }

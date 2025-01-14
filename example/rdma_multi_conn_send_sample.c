@@ -188,12 +188,7 @@ static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send_i
     DOCA_LOG_INFO("RDMA send task was done successfully");
 
     src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(rdma_send_task);
-    /* tmp_result = doca_buf_dec_refcount(src_buf, NULL); */
-    /* if (tmp_result != DOCA_SUCCESS) */
-    /* { */
-    /*     DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(tmp_result)); */
-    /*     DOCA_ERROR_PROPAGATE(result, tmp_result); */
-    /* } */
+    doca_error_t result;
     doca_task_free(doca_rdma_task_send_imm_as_task(rdma_send_task));
 
     size_t len;
@@ -210,6 +205,11 @@ static void rdma_multi_conn_send_completed_callback(struct doca_rdma_task_send_i
     /* Stop context once all tasks are completed */
     if (resources->num_remaining_tasks == 0)
         (void)doca_ctx_stop(resources->rdma_ctx);
+    result = doca_buf_dec_refcount(src_buf, NULL);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(result));
+    }
 }
 
 /*
@@ -303,12 +303,10 @@ static doca_error_t local_rdma_multi_conn_send_export_and_connect(struct rdma_re
             DOCA_LOG_ERR("Failed to connect the sender's RDMA to the receiver's RDMA: %s",
                          doca_error_get_descr(result));
 
-        /* Free remote connection descriptor */
-        free(resources->remote_rdma_conn_descriptor);
-        resources->remote_rdma_conn_descriptor = NULL;
-
         DOCA_LOG_INFO("RDMA connection [%d] is establshed", i);
     }
+    free(resources->remote_rdma_conn_descriptor);
+    resources->remote_rdma_conn_descriptor = NULL;
     DOCA_LOG_INFO("All [%d] RDMA connections have been establshed", resources->cfg->num_connections);
 
     return result;
@@ -326,7 +324,7 @@ static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_res
     struct doca_rdma_task_receive *rdma_recv_tasks[MAX_NUM_CONNECTIONS] = {0};
     union doca_data task_user_data = {0};
     void *src_buf_data;
-    struct doca_buf *src_bufs[MAX_NUM_CONNECTIONS] = {0};
+    struct doca_buf *src_bufs[MAX_NUM_CONNECTIONS * 2] = {0};
     doca_error_t result, tmp_result;
     uint32_t i = 0;
 
@@ -340,35 +338,57 @@ static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_res
     {
         /* Add src buffer to DOCA buffer inventory */
         result = doca_buf_inventory_buf_get_by_data(resources->buf_inventory, resources->mmap,
-                                                    resources->mmap_memrange + i * MAX_BUFF_SIZE, MAX_BUFF_SIZE,
-                                                    &src_bufs[i]);
+                                                    resources->mmap_memrange + 2 * i * resources->cfg->msg_sz,
+                                                    resources->cfg->msg_sz, &src_bufs[2 * i]);
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to allocate DOCA buffer [%d] to DOCA buffer inventory: %s", i,
                          doca_error_get_descr(result));
             return result;
         }
+        result = doca_buf_inventory_buf_get_by_data(resources->buf_inventory, resources->mmap,
+                                                    resources->mmap_memrange + (2 * i + 1) * resources->cfg->msg_sz,
+                                                    resources->cfg->msg_sz, &src_bufs[2 * i + 1]);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to allocate DOCA buffer [%d] to DOCA buffer inventory: %s", i,
+                         doca_error_get_descr(result));
+            return result;
+        }
+        size_t len;
 
         /* Set data of src buffer */
-        result = doca_buf_get_data(src_bufs[i], &src_buf_data);
+        result = doca_buf_get_data(src_bufs[2 * i], &src_buf_data);
+        doca_buf_get_data_len(src_bufs[2 * i], &len);
+        DOCA_LOG_INFO("The len of the buf 2 * i after get is %zu", len);
+        doca_buf_get_data_len(src_bufs[2 * i + 1], &len);
+        DOCA_LOG_INFO("The len of the buf 2 * i + 1 after get is %zu", len);
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to get source buffer [%d] data: %s", i, doca_error_get_descr(result));
             goto destroy_src_buf;
         }
-        strncpy(src_buf_data, resources->cfg->send_string, MAX_BUFF_SIZE + 1);
+        strncpy(src_buf_data, resources->cfg->send_string, resources->cfg->msg_sz + 1);
 
         /* Include first_encountered_error in user data of task to be used in the callbacks */
         task_user_data.ptr = &(resources->first_encountered_error);
         /* Allocate and construct RDMA send task */
 
         uint32_t test_imm = 32;
+
+        doca_buf_get_data_len(src_bufs[2 * i], &len);
+        DOCA_LOG_INFO("The len of the buf after write is %zu", len);
+        DOCA_LOG_INFO("the pointer of the dst_buf %p", src_bufs[2 * i]);
+
         DOCA_LOG_INFO("the send number is %d", test_imm);
-        result = submit_send_imm_task(resources->rdma, resources->connections[i], src_bufs[i], test_imm, task_user_data,
-                                      &rdma_send_tasks[i]);
+        result = submit_send_imm_task(resources->rdma, resources->connections[i], src_bufs[2 * i], test_imm,
+                                      task_user_data, &rdma_send_tasks[i]);
         JUMP_ON_DOCA_ERROR(result, destroy_src_buf);
 
-        result = submit_recv_task(resources->rdma, src_bufs[i], task_user_data, &rdma_recv_tasks[i]);
+        doca_buf_set_data_len(src_bufs[2 * i + 1], 0);
+        doca_buf_get_data_len(src_bufs[2 * i + 1], &len);
+        DOCA_LOG_INFO("The len of the buf 2 * i + 1 after set is %zu", len);
+        result = submit_recv_task(resources->rdma, src_bufs[2 * i + 1], task_user_data, &rdma_recv_tasks[i]);
         JUMP_ON_DOCA_ERROR(result, destroy_src_buf);
         /* result = doca_rdma_task_send_imm_allocate_init(resources->rdma, resources->connections[i], src_bufs[i], */
         /*                                                EXAMPLE_IMME, task_user_data, &rdma_send_tasks[i]); */
@@ -493,6 +513,11 @@ doca_error_t rdma_multi_conn_send(struct rdma_config *cfg)
     union doca_data ctx_user_data = {0};
     const uint32_t mmap_permissions = DOCA_ACCESS_FLAG_LOCAL_READ_WRITE;
     const uint32_t rdma_permissions = DOCA_ACCESS_FLAG_LOCAL_READ_WRITE;
+    resources.cfg = cfg;
+    if (cfg->num_connections == 0)
+    {
+        cfg->num_connections = 1;
+    }
     // struct timespec ts = {
     //     .tv_sec = 0,
     //     .tv_nsec = SLEEP_IN_NANOS,
@@ -501,7 +526,7 @@ doca_error_t rdma_multi_conn_send(struct rdma_config *cfg)
 
     /* Allocating resources */
     result = allocate_rdma_resources(cfg, mmap_permissions, rdma_permissions, doca_rdma_cap_task_send_is_supported,
-                                     &resources, cfg->msg_sz, cfg->num_connections);
+                                     &resources, 2 * cfg->msg_sz * cfg->num_connections, cfg->num_connections);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to allocate RDMA Resources: %s", doca_error_get_descr(result));
