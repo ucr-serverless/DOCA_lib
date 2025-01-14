@@ -37,7 +37,6 @@
 
 #define MAX_ARG_SIZE (MAX_USER_ARG_SIZE + 1) /* Maximum size of input argument */
 #define MAX_USER_TXT_SIZE 4096               /* Maximum size of user input text */
-#define MAX_TXT_SIZE (MAX_USER_TXT_SIZE + 1) /* Maximum size of input text */
 #define PAGE_SIZE sysconf(_SC_PAGESIZE)      /* Page size */
 #define NUM_DMA_TASKS (2048)                 /* DMA tasks number */
 

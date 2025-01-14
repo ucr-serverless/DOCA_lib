@@ -1313,6 +1313,12 @@ doca_error_t allocate_dma_with_rdma_dev(struct rdma_resources *resources, struct
 
     resources->dma_res.dma_ctx = doca_dma_as_ctx(resources->dma_res.dma);
 
+    result = doca_pe_connect_ctx(resources->pe, resources->dma_res.dma_ctx);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set DOCA progress engine to DOCA DMA: %s", doca_error_get_descr(result));
+        goto destroy_dma;
+    }
     result = doca_ctx_set_state_changed_cb(resources->dma_res.dma_ctx, cb->state_change_cb);
     if (result != DOCA_SUCCESS)
     {
@@ -1332,6 +1338,8 @@ doca_error_t allocate_dma_with_rdma_dev(struct rdma_resources *resources, struct
     ctx_user_data.ptr = resources;
     doca_ctx_set_user_data(resources->dma_res.dma_ctx, ctx_user_data);
 
+    result = doca_ctx_start(resources->dma_res.dma_ctx);
+    JUMP_ON_DOCA_ERROR(result, destroy_dma);
     return result;
 
 destroy_dma:

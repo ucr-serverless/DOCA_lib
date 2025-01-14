@@ -33,10 +33,11 @@
 #include <doca_dev.h>
 #include <doca_error.h>
 #include <doca_pe.h>
+#include "common_doca.h"
 
 #define MAX_SAMPLE_TXT_SIZE 4080               /* Maximum size of user input text for the sample */
-#define MAX_TXT_SIZE (MAX_SAMPLE_TXT_SIZE + 1) /* Maximum size of input text */
 #define SLEEP_IN_NANOS (10 * 1000)             /* Sample tasks every 10 microseconds */
+
 
 #ifdef __cplusplus
 extern "C"
