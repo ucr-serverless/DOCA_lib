@@ -1395,14 +1395,11 @@ doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdm
         DOCA_ERROR_PROPAGATE(result, tmp_result);
     }
 
-    if (resources->dma_res)
+    tmp_result = destroy_dma_res(&resources->dma_res);
+    if (tmp_result != DOCA_SUCCESS)
     {
-        tmp_result = destroy_dma_res(resources->dma_res);
-        if (tmp_result != DOCA_SUCCESS)
-        {
-            DOCA_ERROR_PROPAGATE(result, tmp_result);
-            DOCA_LOG_ERR("Failed to destroy DOCA DMA context: %s", doca_error_get_descr(tmp_result));
-        }
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+        DOCA_LOG_ERR("Failed to destroy DOCA DMA context: %s", doca_error_get_descr(tmp_result));
     }
 
     /* Destroy DOCA progress engine */

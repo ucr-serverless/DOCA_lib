@@ -550,13 +550,36 @@ doca_error_t dma_task_is_supported(const struct doca_devinfo *devinfo)
 
 doca_error_t destroy_dma_res(struct dma_obj *res)
 {
-    doca_error_t result;
-    result = doca_dma_destroy(res->dma);
+    doca_error_t result = DOCA_SUCCESS;
+    if (res->dma)
+    {
+        result = doca_dma_destroy(res->dma);
+        LOG_ON_FAILURE(result);
+    }
+    if (res->inv)
+    {
+        result = destroy_inventory(res->inv);
+        LOG_ON_FAILURE(result);
+    }
+    return result;
+}
+
+doca_error_t submit_dma_task(struct doca_dma *dma, const struct doca_buf *src, struct doca_buf *dst,
+                             union doca_data user_data, struct doca_dma_task_memcpy **task)
+{
+
+    struct doca_dma_task_memcpy *dma_task;
+    doca_error_t result = doca_dma_task_memcpy_alloc_init(dma, src, dst, user_data, &dma_task);
     if (result != DOCA_SUCCESS)
     {
-        DOCA_LOG_ERR("Failed to destroy DOCA DMA context: %s", doca_error_get_descr(result));
+        DOCA_LOG_ERR("Failed to allocate DMA memcpy task: %s", doca_error_get_descr(result));
     }
-    result = destroy_inventory(res->inv);
-    LOG_ON_FAILURE(result);
+    /* Submit DMA task */
+    result = doca_task_submit(doca_dma_task_memcpy_as_task(dma_task));
+    JUMP_ON_DOCA_ERROR(result, error);
+    return DOCA_SUCCESS;
+
+error:
+    doca_task_free(doca_dma_task_memcpy_as_task(dma_task));
     return result;
 }

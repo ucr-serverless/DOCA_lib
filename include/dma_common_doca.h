@@ -143,6 +143,9 @@ extern "C"
     void dma_memcpy_error_callback(struct doca_dma_task_memcpy *dma_task, union doca_data task_user_data,
                                    union doca_data ctx_user_data);
     doca_error_t destroy_dma_res(struct dma_obj *res);
+
+    doca_error_t submit_dma_task(struct doca_dma *dma, const struct doca_buf *src, struct doca_buf *dst,
+                                 union doca_data user_data, struct doca_dma_task_memcpy **task);
 #ifdef __cplusplus
 }
 #endif
