@@ -42,6 +42,43 @@
 
 DOCA_LOG_REGISTER(DMA_COMMON);
 
+void basic_dma_state_changed_callback(const union doca_data user_data, struct doca_ctx *ctx,
+                                      enum doca_ctx_states prev_state, enum doca_ctx_states next_state)
+{
+
+    (void)ctx;
+    (void)user_data;
+    (void)prev_state;
+    (void)next_state;
+
+    switch (next_state)
+    {
+    case DOCA_CTX_STATE_IDLE:
+        DOCA_LOG_INFO("dma server context has been stopped");
+        /* We can stop progressing the PE */
+
+        break;
+    case DOCA_CTX_STATE_STARTING:
+        /**
+         * The context is in starting state, this is unexpected for CC server.
+         */
+        DOCA_LOG_ERR("dma server context entered into starting state");
+        break;
+    case DOCA_CTX_STATE_RUNNING:
+        DOCA_LOG_INFO("dma server context is running. Waiting for clients to connect");
+        break;
+    case DOCA_CTX_STATE_STOPPING:
+        /**
+         * The context is in stopping, this can happen when fatal error encountered or when stopping context.
+         * doca_pe_progress() will cause all tasks to be flushed, and finally transition state to idle
+         */
+        DOCA_LOG_INFO("dma server context entered into stopping state. Terminating connections with clients");
+        break;
+    default:
+        break;
+    }
+    return;
+}
 /*
  * ARGP Callback - Handle PCI device address parameter
  *

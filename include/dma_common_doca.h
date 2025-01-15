@@ -78,6 +78,8 @@ extern "C"
         uint32_t n_task;
     };
 
+    void basic_dma_state_changed_callback(const union doca_data user_data, struct doca_ctx *ctx,
+                                          enum doca_ctx_states prev_state, enum doca_ctx_states next_state);
     /*
      * Register the command line parameters for the DOCA DMA samples
      *
