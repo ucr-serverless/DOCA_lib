@@ -2374,18 +2374,18 @@ void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *send_task
 {
     // struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
     // doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
-    struct doca_buf *src_buf = NULL;
-    doca_error_t result = DOCA_SUCCESS, tmp_result;
+    // struct doca_buf *src_buf = NULL;
+    // doca_error_t result = DOCA_SUCCESS, tmp_result;
 
-    DOCA_LOG_INFO("RDMA send task was done successfully");
-
-    src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(send_task);
-    tmp_result = doca_buf_dec_refcount(src_buf, NULL);
-    if (tmp_result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(tmp_result));
-        DOCA_ERROR_PROPAGATE(result, tmp_result);
-    }
+    // DOCA_LOG_INFO("RDMA send task was done successfully");
+    //
+    // src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(send_task);
+    // tmp_result = doca_buf_dec_refcount(src_buf, NULL);
+    // if (tmp_result != DOCA_SUCCESS)
+    // {
+    //     DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(tmp_result));
+    //     DOCA_ERROR_PROPAGATE(result, tmp_result);
+    // }
     doca_task_free(doca_rdma_task_send_imm_as_task(send_task));
 }
 
@@ -2429,7 +2429,7 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
     }
 
     doca_buf_reset_data_len(buf);
-    print_doca_buf_len(buf);
+    // print_doca_buf_len(buf);
 
     // resubmit tasks
     result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_task));
@@ -2465,9 +2465,12 @@ void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, un
     struct doca_buf *dst_buf = NULL;
 
     dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
-    void *data;
-    result = doca_buf_get_data(dst_buf, &data);
-    DOCA_LOG_INFO("content of the data is %s", (char *)data);
+
+    struct rdma_resources *resources = (struct rdma_resources*)ctx_user_data.ptr;
+    DOCA_LOG_INFO("thread [%d] received [%d] recv completion, received buffer addr %p, resource-buffer, %p", resources->id, resources->n_received_req, dst_buf, resources->dst_buf);
+    print_doca_buf_len(dst_buf);
+    print_doca_buf_len(resources->dst_buf);
+
     result = doca_buf_dec_refcount(dst_buf, NULL);
     if (result != DOCA_SUCCESS)
     {
