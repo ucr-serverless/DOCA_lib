@@ -836,7 +836,7 @@ doca_error_t register_rdma_common_params(void)
         DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
         return result;
     }
-    doca_argp_param_set_short_name(on_path_param, "op");
+    doca_argp_param_set_short_name(on_path_param, "onp");
     doca_argp_param_set_long_name(on_path_param, "on_path");
     doca_argp_param_set_description(on_path_param, "flags to decide whethe use off path or on path");
     doca_argp_param_set_callback(on_path_param, on_path_callback);
