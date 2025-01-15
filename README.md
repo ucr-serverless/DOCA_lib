@@ -114,9 +114,9 @@ Examples of the commands are
 ```bash
 
 # server
-./build/rdma_send -d mlx5_3 -p 10000 -g 1
+./build/rdma_send -d mlx5_3 -p 10000 -g 1 -s 20
 # client
-./build/rdma_receive -d mlx5_3 -p 10000 -g 1 -a 192.168.0.4
+./build/rdma_receive -d mlx5_3 -p 10000 -g 1 -a 192.168.0.4 -s 20
 ```
 
 Note to first run the server then run the client, after the server print `All RDMA receive tasks have been successfully submitted`
@@ -125,5 +125,9 @@ go back to the server, it should print `Please press enter after all the receive
 
 press enter to continue the program.
 
+### trouble shooting
 
+If the RDMA send/recv request fail with IO error after task is successfully submitted, the reason is that the receive buffer's data pointer is not at the beginning position.
+
+You should use the `doca_buf_reset_data_len` function call to reset the position.
 

@@ -36,7 +36,9 @@
 #include <doca_log.h>
 
 #include "common_doca.h"
+#include "dma_common_doca.h"
 #include "doca_buf.h"
+#include "doca_dma.h"
 #include "doca_pe.h"
 #include "doca_rdma.h"
 #include "log.h"
@@ -52,6 +54,7 @@ void init_rdma_config(struct rdma_config *cfg)
     cfg->use_rdma_cm = false;
     cfg->sock_fd = 0;
     cfg->is_host_export = false;
+    cfg->on_path = false;
     cfg->is_epoll = false;
     cfg->n_msg = 0;
     cfg->msg_sz = 1;
@@ -195,6 +198,13 @@ static doca_error_t bool_callback(void *param, void *config)
 {
     struct rdma_config *app_cfg = (struct rdma_config *)config;
     app_cfg->is_host_export = *(bool *)param;
+
+    return DOCA_SUCCESS;
+}
+static doca_error_t on_path_callback(void *param, void *config)
+{
+    struct rdma_config *app_cfg = (struct rdma_config *)config;
+    app_cfg->on_path = *(bool *)param;
 
     return DOCA_SUCCESS;
 }
@@ -744,6 +754,7 @@ doca_error_t register_rdma_common_params(void)
     struct doca_argp_param *sock_ip_param;
     struct doca_argp_param *transport_type_param;
     struct doca_argp_param *is_host_export_param;
+    struct doca_argp_param *on_path_param;
     struct doca_argp_param *is_epoll_param;
     struct doca_argp_param *n_msg_param;
     struct doca_argp_param *msg_sz_param;
@@ -760,7 +771,6 @@ doca_error_t register_rdma_common_params(void)
     doca_argp_param_set_description(thread_sz_param, "thread to create");
     doca_argp_param_set_callback(thread_sz_param, thread_sz_callback);
     doca_argp_param_set_type(thread_sz_param, DOCA_ARGP_TYPE_INT);
-    doca_argp_param_set_mandatory(thread_sz_param);
     result = doca_argp_register_param(thread_sz_param);
     if (result != DOCA_SUCCESS)
     {
@@ -820,6 +830,23 @@ doca_error_t register_rdma_common_params(void)
         return result;
     }
 
+    result = doca_argp_param_create(&on_path_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
+        return result;
+    }
+    doca_argp_param_set_short_name(on_path_param, "op");
+    doca_argp_param_set_long_name(on_path_param, "on_path");
+    doca_argp_param_set_description(on_path_param, "flags to decide whethe use off path or on path");
+    doca_argp_param_set_callback(on_path_param, on_path_callback);
+    doca_argp_param_set_type(on_path_param, DOCA_ARGP_TYPE_BOOLEAN);
+    result = doca_argp_register_param(on_path_param);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to register program param: %s", doca_error_get_descr(result));
+        return result;
+    }
     result = doca_argp_param_create(&is_epoll_param);
     if (result != DOCA_SUCCESS)
     {
@@ -1052,17 +1079,7 @@ doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mma
         DOCA_LOG_ERR("Failed to create DOCA mmap: %s", doca_error_get_descr(result));
         goto free_memrange;
     }
-
-    if (cfg->is_host_export == true && (cfg->host_descriptor != NULL))
-    {
-
-        DOCA_LOG_INFO("import from host");
-        result = doca_mmap_create_from_export(NULL, (const void *)cfg->host_descriptor, cfg->host_descriptor_size,
-                                              resources->doca_device, &cfg->host_mmap);
-
-        JUMP_ON_DOCA_ERROR(result, destroy_pe);
-        DOCA_LOG_INFO("import buffer success");
-    }
+    DOCA_LOG_INFO("the mmaprange is %p", resources->mmap_memrange);
 
     result = doca_pe_create(&(resources->pe));
     if (result != DOCA_SUCCESS)
@@ -1279,6 +1296,62 @@ static doca_error_t destroy_rdma_cm_resources(struct rdma_resources *resources)
     return result;
 }
 
+doca_error_t allocate_dma_with_rdma_dev(struct rdma_resources *resources, struct dma_cb *cb)
+{
+    /* Two buffers for source and destination */
+    union doca_data ctx_user_data = {0};
+    doca_error_t result, tmp_result;
+
+    assert(resources->doca_device);
+
+    result = doca_dma_create(resources->doca_device, &resources->dma_res.dma);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create DMA context: %s", doca_error_get_descr(result));
+        return result;
+    }
+
+    resources->dma_res.dma_ctx = doca_dma_as_ctx(resources->dma_res.dma);
+
+    result = doca_pe_connect_ctx(resources->pe, resources->dma_res.dma_ctx);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set DOCA progress engine to DOCA DMA: %s", doca_error_get_descr(result));
+        goto destroy_dma;
+    }
+    result = doca_ctx_set_state_changed_cb(resources->dma_res.dma_ctx, cb->state_change_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set DMA state change callback: %s", doca_error_get_descr(result));
+        goto destroy_dma;
+    }
+
+    result =
+        doca_dma_task_memcpy_set_conf(resources->dma_res.dma, cb->task_completion_cb, cb->task_error_cb, cb->n_task);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set configurations for DMA memcpy task: %s", doca_error_get_descr(result));
+        goto destroy_dma;
+    }
+
+    /* Include resources in user data of context to be used in callbacks */
+    ctx_user_data.ptr = resources;
+    doca_ctx_set_user_data(resources->dma_res.dma_ctx, ctx_user_data);
+
+    result = doca_ctx_start(resources->dma_res.dma_ctx);
+    JUMP_ON_DOCA_ERROR(result, destroy_dma);
+    return result;
+
+destroy_dma:
+    tmp_result = doca_dma_destroy(resources->dma_res.dma);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+        DOCA_LOG_ERR("Failed to destroy DOCA DMA context: %s", doca_error_get_descr(tmp_result));
+    }
+    return result;
+}
+
 doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg)
 {
     doca_error_t result = DOCA_SUCCESS, tmp_result;
@@ -1328,6 +1401,13 @@ doca_error_t destroy_rdma_resources(struct rdma_resources *resources, struct rdm
     {
         DOCA_LOG_ERR("Failed to destroy DOCA RDMA: %s", doca_error_get_descr(tmp_result));
         DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+
+    tmp_result = destroy_dma_res(&resources->dma_res);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+        DOCA_LOG_ERR("Failed to destroy DOCA DMA context: %s", doca_error_get_descr(tmp_result));
     }
 
     /* Destroy DOCA progress engine */
@@ -1989,6 +2069,13 @@ doca_error_t set_default_config_value(struct rdma_config *cfg)
     cfg->host_descriptor = NULL;
     cfg->host_descriptor_size = 0;
     cfg->host_mmap = NULL;
+    cfg->sock_fd = 0;
+    cfg->is_host_export = false;
+    cfg->on_path = false;
+    cfg->is_epoll = false;
+    cfg->msg_sz = 1;
+    cfg->n_thread = 1;
+    cfg->is_perf_started = false;
 
     return DOCA_SUCCESS;
 }
@@ -2114,14 +2201,14 @@ doca_error_t submit_recv_task(struct doca_rdma *rdma, struct doca_buf *buf, unio
     }
 
     /* Submit RDMA receive task */
-    DOCA_LOG_INFO("Submitting RDMA receive task");
+    // DOCA_LOG_INFO("Submitting RDMA receive task");
     result = doca_task_submit(doca_rdma_task_receive_as_task(*task));
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to submit RDMA receive task: %s", doca_error_get_descr(result));
         goto free_task;
     }
-    DOCA_LOG_INFO("RDMA receive task successfully submitted");
+    // DOCA_LOG_INFO("RDMA receive task successfully submitted");
 
     return DOCA_SUCCESS;
 free_task:
@@ -2167,14 +2254,14 @@ doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_conne
     }
 
     /* Submit RDMA receive task */
-    DOCA_LOG_INFO("Submitting RDMA send imm task");
+    // DOCA_LOG_INFO("Submitting RDMA send imm task");
     result = doca_task_submit(doca_rdma_task_send_imm_as_task(*task));
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to submit RDMA send imm task: %s", doca_error_get_descr(result));
         goto free_task;
     }
-    DOCA_LOG_INFO("RDMA send imm task successfully submitted");
+    // DOCA_LOG_INFO("RDMA send imm task successfully submitted");
 
     return DOCA_SUCCESS;
 free_task:
@@ -2287,18 +2374,18 @@ void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *send_task
 {
     // struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
     // doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
-    struct doca_buf *src_buf = NULL;
-    doca_error_t result = DOCA_SUCCESS, tmp_result;
+    // struct doca_buf *src_buf = NULL;
+    // doca_error_t result = DOCA_SUCCESS, tmp_result;
 
-    DOCA_LOG_INFO("RDMA send task was done successfully");
-
-    src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(send_task);
-    tmp_result = doca_buf_dec_refcount(src_buf, NULL);
-    if (tmp_result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(tmp_result));
-        DOCA_ERROR_PROPAGATE(result, tmp_result);
-    }
+    // DOCA_LOG_INFO("RDMA send task was done successfully");
+    //
+    // src_buf = (struct doca_buf *)doca_rdma_task_send_imm_get_src_buf(send_task);
+    // tmp_result = doca_buf_dec_refcount(src_buf, NULL);
+    // if (tmp_result != DOCA_SUCCESS)
+    // {
+    //     DOCA_LOG_ERR("Failed to decrease src_buf count: %s", doca_error_get_descr(tmp_result));
+    //     DOCA_ERROR_PROPAGATE(result, tmp_result);
+    // }
     doca_task_free(doca_rdma_task_send_imm_as_task(send_task));
 }
 
@@ -2326,7 +2413,7 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
                                   union doca_data ctx_user_data)
 {
 
-    DOCA_LOG_INFO("message received");
+    // DOCA_LOG_INFO("message received");
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
     doca_error_t result;
     struct doca_rdma_task_send_imm *send_task;
@@ -2342,6 +2429,7 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
     }
 
     doca_buf_reset_data_len(buf);
+    // print_doca_buf_len(buf);
 
     // resubmit tasks
     result = doca_task_submit(doca_rdma_task_receive_as_task(rdma_receive_task));
@@ -2377,9 +2465,12 @@ void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, un
     struct doca_buf *dst_buf = NULL;
 
     dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
-    void* data;
-    result = doca_buf_get_data(dst_buf, &data);
-    DOCA_LOG_INFO("content of the data is %s", (char *)data);
+
+    // struct rdma_resources *resources = (struct rdma_resources*)ctx_user_data.ptr;
+    // DOCA_LOG_INFO("thread [%d] received [%d] recv completion, received buffer addr %p, resource-buffer, %p",
+    // resources->id, resources->n_received_req, dst_buf, resources->dst_buf); print_doca_buf_len(dst_buf);
+    // print_doca_buf_len(resources->dst_buf);
+
     result = doca_buf_dec_refcount(dst_buf, NULL);
     if (result != DOCA_SUCCESS)
     {

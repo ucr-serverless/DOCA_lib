@@ -27,9 +27,11 @@
 #define COMMON_H_
 
 #include <bits/time.h>
+#include <doca_buf.h>
 #include <doca_dev.h>
 #include <doca_error.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <time.h>
 
 #define NS_PER_SEC 1E9  /* Nano-seconds per second */
@@ -37,6 +39,9 @@
 #define NS_PER_USEC 1E3
 #define USEC_PER_SEC 1E6
 #define MSEC_PER_SEC 1E3
+#define MAX_USER_ARG_SIZE (256)              /* Maximum size of user input argument */
+#define MAX_ARG_SIZE (MAX_USER_ARG_SIZE + 1) /* Maximum size of input argument */
+#define MAX_TXT_SIZE (4096 + 1)              /* Maximum size of input text */
 
 #ifdef CLOCK_MONOTONIC_RAW /* Defined in glibc bits/time.h */
 #define CLOCK_TYPE_ID CLOCK_MONOTONIC_RAW
@@ -301,6 +306,14 @@ extern "C"
     double calculate_timediff_nsec(struct timespec *end, struct timespec *start);
     doca_error_t init_inventory(struct doca_buf_inventory **inv, uint64_t num);
     doca_error_t destroy_inventory(struct doca_buf_inventory *inv);
+    doca_error_t get_buf_from_inv_with_zero_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
+                                                     char *data_start, size_t len, struct doca_buf **buf);
+    doca_error_t get_buf_from_inv_with_full_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
+                                                     char *data_start, size_t len, struct doca_buf **buf);
+    doca_error_t set_buf_to_len(struct doca_buf *buf);
+    doca_error_t safe_buf_decounter(struct doca_buf *buf);
+
+    size_t print_doca_buf_len(struct doca_buf *buf);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

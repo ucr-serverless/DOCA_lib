@@ -41,8 +41,8 @@
 #define MAX_MSG_SIZE 65535 /* Max message size */
 DOCA_LOG_REGISTER(COMCH_CTRL_PATH_COMMON);
 
-#define CC_REC_QUEUE_SIZE 100000 /* Maximum amount of message in queue */
-#define CC_SEND_TASK_NUM 1024    /* Number of CC send tasks  */
+#define CC_REC_QUEUE_SIZE 8192 /* Maximum amount of message in queue */
+#define CC_SEND_TASK_NUM 1024  /* Number of CC send tasks  */
 
 void basic_send_task_completion_callback(struct doca_comch_task_send *task, union doca_data task_user_data,
                                          union doca_data ctx_user_data)

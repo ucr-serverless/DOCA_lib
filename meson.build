@@ -41,6 +41,7 @@ src_files = files(
   'src/utils_doca.c',
   'src/comch_utils.c',
   'src/comch_ctrl_path_common.c',
+  'src/dma_common_doca.c',
   'src/pack.c',
 
   )
