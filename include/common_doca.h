@@ -306,7 +306,9 @@ extern "C"
     double calculate_timediff_nsec(struct timespec *end, struct timespec *start);
     doca_error_t init_inventory(struct doca_buf_inventory **inv, uint64_t num);
     doca_error_t destroy_inventory(struct doca_buf_inventory *inv);
-    doca_error_t get_buf_from_inv_and_reset_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
+    doca_error_t get_buf_from_inv_with_zero_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
+                                                     char *data_start, size_t len, struct doca_buf **buf);
+    doca_error_t get_buf_from_inv_with_full_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
                                                      char *data_start, size_t len, struct doca_buf **buf);
     doca_error_t set_buf_to_len(struct doca_buf *buf);
     doca_error_t safe_buf_decounter(struct doca_buf *buf);

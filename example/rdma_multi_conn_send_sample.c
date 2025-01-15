@@ -340,7 +340,7 @@ static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_res
         // result = doca_buf_inventory_buf_get_by_data(resources->buf_inventory, resources->mmap,
         //                                             resources->mmap_memrange + 2 * i * resources->cfg->msg_sz,
         //                                             resources->cfg->msg_sz, &src_bufs[2 * i]);
-        result = get_buf_from_inv_and_reset_data_len(resources->buf_inventory, resources->mmap,
+        result = get_buf_from_inv_with_zero_data_len(resources->buf_inventory, resources->mmap,
                                                      resources->mmap_memrange + 2 * i * resources->cfg->msg_sz,
                                                      resources->cfg->msg_sz, &src_bufs[2 * i]);
         if (result != DOCA_SUCCESS)
@@ -350,9 +350,9 @@ static doca_error_t rdma_multi_conn_send_prepare_and_submit_task(struct rdma_res
             return result;
         }
         set_buf_to_len(src_bufs[2 * i]);
-        result = doca_buf_inventory_buf_get_by_data(resources->buf_inventory, resources->mmap,
-                                                    resources->mmap_memrange + (2 * i + 1) * resources->cfg->msg_sz,
-                                                    resources->cfg->msg_sz, &src_bufs[2 * i + 1]);
+        result = get_buf_from_inv_with_zero_data_len(resources->buf_inventory, resources->mmap,
+                                                     resources->mmap_memrange + (2 * i + 1) * resources->cfg->msg_sz,
+                                                     resources->cfg->msg_sz, &src_bufs[2 * i + 1]);
         if (result != DOCA_SUCCESS)
         {
             DOCA_LOG_ERR("Failed to allocate DOCA buffer [%d] to DOCA buffer inventory: %s", i,

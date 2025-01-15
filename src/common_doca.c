@@ -1029,20 +1029,21 @@ doca_error_t destroy_inventory(struct doca_buf_inventory *inv)
     return result;
 }
 
-doca_error_t get_buf_from_inv_and_reset_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
+doca_error_t get_buf_from_inv_with_zero_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
                                                  char *data_start, size_t len, struct doca_buf **buf)
 {
-    doca_error_t result = DOCA_SUCCESS;
-    result = doca_buf_inventory_buf_get_by_data(inv, mmap, data_start, len, buf);
-
-    JUMP_ON_DOCA_ERROR(result, error);
-
-    result = doca_buf_reset_data_len(*buf);
+    doca_error_t result = doca_buf_inventory_buf_get_by_addr(inv, mmap, data_start, len, buf);
     LOG_ON_FAILURE(result);
-error:
     return result;
 }
 
+doca_error_t get_buf_from_inv_with_full_data_len(struct doca_buf_inventory *inv, struct doca_mmap *mmap,
+                                                 char *data_start, size_t len, struct doca_buf **buf)
+{
+    doca_error_t result = doca_buf_inventory_buf_get_by_data(inv, mmap, data_start, len, buf);
+    LOG_ON_FAILURE(result);
+    return result;
+}
 doca_error_t set_buf_to_len(struct doca_buf *buf)
 {
     if (buf == NULL)
