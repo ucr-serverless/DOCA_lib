@@ -2201,14 +2201,14 @@ doca_error_t submit_recv_task(struct doca_rdma *rdma, struct doca_buf *buf, unio
     }
 
     /* Submit RDMA receive task */
-    DOCA_LOG_INFO("Submitting RDMA receive task");
+    // DOCA_LOG_INFO("Submitting RDMA receive task");
     result = doca_task_submit(doca_rdma_task_receive_as_task(*task));
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to submit RDMA receive task: %s", doca_error_get_descr(result));
         goto free_task;
     }
-    DOCA_LOG_INFO("RDMA receive task successfully submitted");
+    // DOCA_LOG_INFO("RDMA receive task successfully submitted");
 
     return DOCA_SUCCESS;
 free_task:
@@ -2254,14 +2254,14 @@ doca_error_t submit_send_imm_task(struct doca_rdma *rdma, struct doca_rdma_conne
     }
 
     /* Submit RDMA receive task */
-    DOCA_LOG_INFO("Submitting RDMA send imm task");
+    // DOCA_LOG_INFO("Submitting RDMA send imm task");
     result = doca_task_submit(doca_rdma_task_send_imm_as_task(*task));
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to submit RDMA send imm task: %s", doca_error_get_descr(result));
         goto free_task;
     }
-    DOCA_LOG_INFO("RDMA send imm task successfully submitted");
+    // DOCA_LOG_INFO("RDMA send imm task successfully submitted");
 
     return DOCA_SUCCESS;
 free_task:
@@ -2413,7 +2413,7 @@ void rdma_recv_then_send_callback(struct doca_rdma_task_receive *rdma_receive_ta
                                   union doca_data ctx_user_data)
 {
 
-    DOCA_LOG_INFO("message received");
+    // DOCA_LOG_INFO("message received");
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
     doca_error_t result;
     struct doca_rdma_task_send_imm *send_task;
@@ -2466,10 +2466,10 @@ void rdma_recv_err_callback(struct doca_rdma_task_receive *rdma_receive_task, un
 
     dst_buf = doca_rdma_task_receive_get_dst_buf(rdma_receive_task);
 
-    struct rdma_resources *resources = (struct rdma_resources*)ctx_user_data.ptr;
-    DOCA_LOG_INFO("thread [%d] received [%d] recv completion, received buffer addr %p, resource-buffer, %p", resources->id, resources->n_received_req, dst_buf, resources->dst_buf);
-    print_doca_buf_len(dst_buf);
-    print_doca_buf_len(resources->dst_buf);
+    // struct rdma_resources *resources = (struct rdma_resources*)ctx_user_data.ptr;
+    // DOCA_LOG_INFO("thread [%d] received [%d] recv completion, received buffer addr %p, resource-buffer, %p",
+    // resources->id, resources->n_received_req, dst_buf, resources->dst_buf); print_doca_buf_len(dst_buf);
+    // print_doca_buf_len(resources->dst_buf);
 
     result = doca_buf_dec_refcount(dst_buf, NULL);
     if (result != DOCA_SUCCESS)
