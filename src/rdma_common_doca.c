@@ -836,7 +836,7 @@ doca_error_t register_rdma_common_params(void)
         DOCA_LOG_ERR("Failed to create ARGP param: %s", doca_error_get_descr(result));
         return result;
     }
-    doca_argp_param_set_short_name(on_path_param, "op");
+    doca_argp_param_set_short_name(on_path_param, "onp");
     doca_argp_param_set_long_name(on_path_param, "on_path");
     doca_argp_param_set_description(on_path_param, "flags to decide whethe use off path or on path");
     doca_argp_param_set_callback(on_path_param, on_path_callback);
@@ -2369,6 +2369,65 @@ destroy_resources:
     return tmp_result;
 }
 
+doca_error_t init_send_imm_rdma_resources_without_start(struct rdma_resources *resources, struct rdma_config *cfg,
+                                                        struct rdma_cb_config *cb_cfg)
+{
+    union doca_data ctx_user_data = {0};
+    doca_error_t result, tmp_result;
+
+    result = doca_rdma_task_receive_set_conf(resources->rdma, cb_cfg->msg_recv_cb, cb_cfg->msg_recv_err_cb,
+                                             DEFAULT_RDMA_TASK_NUM);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set configurations for RDMA receive task: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+    result = doca_rdma_task_send_imm_set_conf(resources->rdma, cb_cfg->send_imm_task_comp_cb,
+                                              cb_cfg->send_imm_task_comp_err_cb, DEFAULT_RDMA_TASK_NUM);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set configurations for RDMA send task: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+
+    result = doca_ctx_set_state_changed_cb(resources->rdma_ctx, cb_cfg->state_change_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set state change callback for RDMA context: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+
+    /* Include the program's resources in user data of context to be used in callbacks */
+    ctx_user_data.ptr = cb_cfg->ctx_user_data;
+    result = doca_ctx_set_user_data(resources->rdma_ctx, ctx_user_data);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set context user data: %s", doca_error_get_descr(result));
+        goto destroy_resources;
+    }
+
+    // result = doca_rdma_set_connection_state_callbacks(
+    //     resources->rdma, cb_cfg->doca_rdma_connect_request_cb, cb_cfg->doca_rdma_connect_established_cb,
+    //     cb_cfg->doca_rdma_connect_failure_cb, cb_cfg->doca_rdma_disconnect_cb);
+    // if (result != DOCA_SUCCESS)
+    // {
+    //     DOCA_LOG_ERR("Failed to set rdma cm callback configuration, error: %s", doca_error_get_descr(result));
+    //     return result;
+    // }
+
+    /* Start RDMA context */
+
+    return result;
+
+destroy_resources:
+    tmp_result = destroy_rdma_resources(resources, cfg);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to destroy DOCA RDMA resources: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+    return tmp_result;
+}
 void basic_send_imm_completed_callback(struct doca_rdma_task_send_imm *send_task, union doca_data task_user_data,
                                        union doca_data ctx_user_data)
 {
