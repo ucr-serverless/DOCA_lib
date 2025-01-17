@@ -539,7 +539,7 @@ doca_error_t rdma_multi_conn_send(struct rdma_config *cfg)
 
     char port[MAX_PORT_LEN];
 
-    int_to_port_str(cfg->sock_port, port, MAX_PORT_LEN);
+    sock_int_to_port_str(cfg->sock_port, port, MAX_PORT_LEN);
 
     int fd = sock_create_bind("0.0.0.0", port);
     if (fd < 0)

@@ -505,7 +505,7 @@ doca_error_t rdma_multi_conn_receive(struct rdma_config *cfg)
 
     char port[MAX_PORT_LEN];
 
-    int_to_port_str(cfg->sock_port, port, MAX_PORT_LEN);
+    sock_int_to_port_str(cfg->sock_port, port, MAX_PORT_LEN);
 
     log_info("start connect");
     cfg->sock_fd = sock_create_connect(cfg->sock_ip, port);
