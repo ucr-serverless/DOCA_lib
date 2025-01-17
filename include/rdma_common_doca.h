@@ -44,7 +44,7 @@
 
 #include "common_doca.h"
 #include "dma_common_doca.h"
-#include "doca_ctx.h"
+// #include "doca_ctx.h"
 
 #define NUM_RDMA_TASKS (1)
 #define DEFAULT_RDMA_TASK_NUM (4096)

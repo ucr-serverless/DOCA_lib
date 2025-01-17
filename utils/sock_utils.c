@@ -8,7 +8,7 @@
 #include "log.h"
 #include "sock_utils.h"
 
-int int_to_port_str(int port, char *ret, size_t len)
+int sock_int_to_port_str(int port, char *ret, size_t len)
 {
     if (!ret)
     {

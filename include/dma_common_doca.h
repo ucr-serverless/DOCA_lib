@@ -29,11 +29,11 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#include "common_doca.h"
 #include <doca_dma.h>
 #include <doca_error.h>
 
-#include "common_doca.h"
-#include "doca_ctx.h"
+// #include "doca_ctx.h"
 
 #define MAX_ARG_SIZE (MAX_USER_ARG_SIZE + 1) /* Maximum size of input argument */
 #define MAX_USER_TXT_SIZE 4096               /* Maximum size of user input text */

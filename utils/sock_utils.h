@@ -9,7 +9,7 @@
 #define SOCK_SYNC_MSG "sync"
 #define MAX_PORT_LEN 6
 
-int int_to_port_str(int port, char *ret, size_t len);
+int sock_int_to_port_str(int port, char *ret, size_t len);
 ssize_t sock_read(int sock_fd, void *buffer, size_t len);
 ssize_t sock_write(int sock_fd, const void *buffer, size_t len);
 

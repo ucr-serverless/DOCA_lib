@@ -30,7 +30,7 @@
 
 #include "common_doca.h"
 #include <doca_comch.h>
-#include <doca_ctx.h>
+// #include <doca_ctx.h>
 #include <doca_dev.h>
 #include <doca_error.h>
 #include <doca_pe.h>

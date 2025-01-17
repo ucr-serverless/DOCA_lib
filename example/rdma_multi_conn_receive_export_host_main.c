@@ -111,7 +111,7 @@ int main(int argc, char **argv)
 
     char port[MAX_PORT_LEN];
 
-    int_to_port_str(cfg.sock_port, port, MAX_PORT_LEN);
+    sock_int_to_port_str(cfg.sock_port, port, MAX_PORT_LEN);
 
     int fd = sock_create_bind(DEFAULT_MMAP_EXPT_LISTEN_ADDR, DEFAULT_MMAP_EXPT_LISTEN_PORT);
     if (fd < 0)
