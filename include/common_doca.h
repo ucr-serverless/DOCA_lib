@@ -23,12 +23,13 @@
  *
  */
 
-#ifndef COMMON_H_
-#define COMMON_H_
+#ifndef COMMON_DOCA_H_
+#define COMMON_DOCA_H_
 
 #include <bits/time.h>
 #include <doca_buf.h>
 #include <doca_dev.h>
+#include <doca_ctx.h>
 #include <doca_error.h>
 #include <stdbool.h>
 #include <stdint.h>
