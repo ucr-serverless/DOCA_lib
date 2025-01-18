@@ -523,8 +523,9 @@ extern "C"
     doca_error_t create_two_side_rc_rdma(struct doca_dev *dev, struct doca_pe *pe, struct doca_rdma **rdma,
                                          struct doca_ctx **ctx, uint32_t gid_index, uint16_t n_conn);
     doca_error_t open_rdma_device_and_pe(const char *dev_name, struct doca_dev **dev, struct doca_pe **pe);
+    // remember to start the rdma_ctx afterwards
     doca_error_t init_two_side_rdma_callbacks(struct doca_rdma *rdma, struct doca_ctx *rdma_ctx,
-                                              struct rdma_cb_config *cb_cfg);
+                                              struct rdma_cb_config *cb_cfg, uint32_t n_task);
 
 #ifdef __cplusplus
 }

@@ -2421,19 +2421,19 @@ uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task)
 }
 
 doca_error_t init_two_side_rdma_callbacks(struct doca_rdma *rdma, struct doca_ctx *rdma_ctx,
-                                          struct rdma_cb_config *cb_cfg)
+                                          struct rdma_cb_config *cb_cfg, uint32_t task_num)
 {
     union doca_data ctx_user_data = {0};
     doca_error_t result;
 
-    result = doca_rdma_task_receive_set_conf(rdma, cb_cfg->msg_recv_cb, cb_cfg->msg_recv_err_cb, DEFAULT_RDMA_TASK_NUM);
+    result = doca_rdma_task_receive_set_conf(rdma, cb_cfg->msg_recv_cb, cb_cfg->msg_recv_err_cb, task_num);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set configurations for RDMA receive task: %s", doca_error_get_descr(result));
         goto destroy_resources;
     }
     result = doca_rdma_task_send_imm_set_conf(rdma, cb_cfg->send_imm_task_comp_cb, cb_cfg->send_imm_task_comp_err_cb,
-                                              DEFAULT_RDMA_TASK_NUM);
+                                              task_num);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set configurations for RDMA send task: %s", doca_error_get_descr(result));
@@ -2477,7 +2477,7 @@ doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, stru
 {
     doca_error_t result, tmp_result;
 
-    result = init_two_side_rdma_callbacks(resources->rdma, resources->rdma_ctx, cb_cfg);
+    result = init_two_side_rdma_callbacks(resources->rdma, resources->rdma_ctx, cb_cfg, DEFAULT_RDMA_TASK_NUM);
     JUMP_ON_DOCA_ERROR(result, destroy_resources);
 
     result = doca_ctx_start(resources->rdma_ctx);
@@ -2504,7 +2504,7 @@ doca_error_t init_send_imm_rdma_resources_without_start(struct rdma_resources *r
 {
     doca_error_t result, tmp_result;
 
-    result = init_two_side_rdma_callbacks(resources->rdma, resources->rdma_ctx, cb_cfg);
+    result = init_two_side_rdma_callbacks(resources->rdma, resources->rdma_ctx, cb_cfg, DEFAULT_RDMA_TASK_NUM);
     JUMP_ON_DOCA_ERROR(result, destroy_resources);
 
     return result;
