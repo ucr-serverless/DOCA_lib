@@ -438,6 +438,8 @@ extern "C"
     doca_error_t create_local_mmap(struct doca_mmap **mmap, const uint32_t mmap_permissions, void *data_buffer,
                                    size_t data_buffer_size, struct doca_dev *dev);
 
+    doca_error_t create_two_side_mmap_from_local_memory(struct doca_mmap **mmap, void *data_buffer,
+                                                        size_t data_buffer_size, struct doca_dev *dev);
     /*
      * Config callbacks needed for rdma cm connection setup, and config tasks used for negotiation between peers
      *

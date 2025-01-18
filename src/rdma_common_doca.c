@@ -41,6 +41,7 @@
 #include "doca_dma.h"
 #include "doca_pe.h"
 #include "doca_rdma.h"
+#include "doca_types.h"
 #include "log.h"
 #include "rdma_common_doca.h"
 #include "sock_utils.h"
@@ -2246,6 +2247,12 @@ destroy_mmap:
     }
     *mmap = NULL;
     return result;
+}
+
+doca_error_t create_two_side_mmap_from_local_memory(struct doca_mmap **mmap, void *data_buffer, size_t data_buffer_size,
+                                                    struct doca_dev *dev)
+{
+    return create_local_mmap(mmap, DOCA_ACCESS_FLAG_LOCAL_READ_WRITE, data_buffer, data_buffer_size, dev);
 }
 
 doca_error_t config_rdma_cm_callback_and_negotiation_task(struct rdma_resources *resources, bool need_send_task,
