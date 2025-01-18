@@ -2420,28 +2420,27 @@ uint32_t get_imme_from_task(struct doca_rdma_task_receive *recv_task)
     return ntohl(doca_rdma_task_receive_get_result_immediate_data(recv_task));
 }
 
-doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg,
+doca_error_t init_two_side_rdma_callbacks(struct doca_rdma *rdma, struct doca_ctx *rdma_ctx,
                                           struct rdma_cb_config *cb_cfg)
 {
     union doca_data ctx_user_data = {0};
-    doca_error_t result, tmp_result;
+    doca_error_t result;
 
-    result = doca_rdma_task_receive_set_conf(resources->rdma, cb_cfg->msg_recv_cb, cb_cfg->msg_recv_err_cb,
-                                             DEFAULT_RDMA_TASK_NUM);
+    result = doca_rdma_task_receive_set_conf(rdma, cb_cfg->msg_recv_cb, cb_cfg->msg_recv_err_cb, DEFAULT_RDMA_TASK_NUM);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set configurations for RDMA receive task: %s", doca_error_get_descr(result));
         goto destroy_resources;
     }
-    result = doca_rdma_task_send_imm_set_conf(resources->rdma, cb_cfg->send_imm_task_comp_cb,
-                                              cb_cfg->send_imm_task_comp_err_cb, DEFAULT_RDMA_TASK_NUM);
+    result = doca_rdma_task_send_imm_set_conf(rdma, cb_cfg->send_imm_task_comp_cb, cb_cfg->send_imm_task_comp_err_cb,
+                                              DEFAULT_RDMA_TASK_NUM);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set configurations for RDMA send task: %s", doca_error_get_descr(result));
         goto destroy_resources;
     }
 
-    result = doca_ctx_set_state_changed_cb(resources->rdma_ctx, cb_cfg->state_change_cb);
+    result = doca_ctx_set_state_changed_cb(rdma_ctx, cb_cfg->state_change_cb);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Unable to set state change callback for RDMA context: %s", doca_error_get_descr(result));
@@ -2450,7 +2449,7 @@ doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, stru
 
     /* Include the program's resources in user data of context to be used in callbacks */
     ctx_user_data.ptr = cb_cfg->ctx_user_data;
-    result = doca_ctx_set_user_data(resources->rdma_ctx, ctx_user_data);
+    result = doca_ctx_set_user_data(rdma_ctx, ctx_user_data);
     if (result != DOCA_SUCCESS)
     {
         DOCA_LOG_ERR("Failed to set context user data: %s", doca_error_get_descr(result));
@@ -2467,6 +2466,20 @@ doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, stru
     // }
 
     /* Start RDMA context */
+
+    return result;
+
+destroy_resources:
+    return DOCA_ERROR_UNEXPECTED;
+}
+doca_error_t init_send_imm_rdma_resources(struct rdma_resources *resources, struct rdma_config *cfg,
+                                          struct rdma_cb_config *cb_cfg)
+{
+    doca_error_t result, tmp_result;
+
+    result = init_two_side_rdma_callbacks(resources->rdma, resources->rdma_ctx, cb_cfg);
+    JUMP_ON_DOCA_ERROR(result, destroy_resources);
+
     result = doca_ctx_start(resources->rdma_ctx);
     if (result != DOCA_SUCCESS)
     {
@@ -2489,50 +2502,10 @@ destroy_resources:
 doca_error_t init_send_imm_rdma_resources_without_start(struct rdma_resources *resources, struct rdma_config *cfg,
                                                         struct rdma_cb_config *cb_cfg)
 {
-    union doca_data ctx_user_data = {0};
     doca_error_t result, tmp_result;
 
-    result = doca_rdma_task_receive_set_conf(resources->rdma, cb_cfg->msg_recv_cb, cb_cfg->msg_recv_err_cb,
-                                             DEFAULT_RDMA_TASK_NUM);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Unable to set configurations for RDMA receive task: %s", doca_error_get_descr(result));
-        goto destroy_resources;
-    }
-    result = doca_rdma_task_send_imm_set_conf(resources->rdma, cb_cfg->send_imm_task_comp_cb,
-                                              cb_cfg->send_imm_task_comp_err_cb, DEFAULT_RDMA_TASK_NUM);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Unable to set configurations for RDMA send task: %s", doca_error_get_descr(result));
-        goto destroy_resources;
-    }
-
-    result = doca_ctx_set_state_changed_cb(resources->rdma_ctx, cb_cfg->state_change_cb);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Unable to set state change callback for RDMA context: %s", doca_error_get_descr(result));
-        goto destroy_resources;
-    }
-
-    /* Include the program's resources in user data of context to be used in callbacks */
-    ctx_user_data.ptr = cb_cfg->ctx_user_data;
-    result = doca_ctx_set_user_data(resources->rdma_ctx, ctx_user_data);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to set context user data: %s", doca_error_get_descr(result));
-        goto destroy_resources;
-    }
-
-    // result = doca_rdma_set_connection_state_callbacks(
-    //     resources->rdma, cb_cfg->doca_rdma_connect_request_cb, cb_cfg->doca_rdma_connect_established_cb,
-    //     cb_cfg->doca_rdma_connect_failure_cb, cb_cfg->doca_rdma_disconnect_cb);
-    // if (result != DOCA_SUCCESS)
-    // {
-    //     DOCA_LOG_ERR("Failed to set rdma cm callback configuration, error: %s", doca_error_get_descr(result));
-    //     return result;
-    // }
-
-    /* Start RDMA context */
+    result = init_two_side_rdma_callbacks(resources->rdma, resources->rdma_ctx, cb_cfg);
+    JUMP_ON_DOCA_ERROR(result, destroy_resources);
 
     return result;
 
