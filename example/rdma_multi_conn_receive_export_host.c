@@ -147,8 +147,7 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
 {
     struct rdma_resources *resources = (struct rdma_resources *)ctx_user_data.ptr;
     void *dst_buf_data = NULL;
-    doca_error_t *first_encountered_error = (doca_error_t *)task_user_data.ptr;
-    doca_error_t result = DOCA_SUCCESS, tmp_result;
+    doca_error_t result = DOCA_SUCCESS;
     struct doca_rdma_connection *rdma_connection;
     struct doca_buf *dst_buf = NULL;
     uint32_t imme;
@@ -170,7 +169,7 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
     DOCA_LOG_INFO("the imme received is %d", imme);
     struct doca_rdma_task_send_imm *send_task = NULL;
 
-    tmp_result = submit_send_imm_task(resources->rdma, rdma_connection, dst_buf, 33, task_user_data, &send_task);
+    result = submit_send_imm_task(resources->rdma, rdma_connection, dst_buf, 33, task_user_data, &send_task);
     JUMP_ON_DOCA_ERROR(result, free_send_task);
     goto free_task;
 
@@ -186,17 +185,13 @@ static void rdma_multi_conn_receive_completed_callback(struct doca_rdma_task_rec
     /* DOCA_LOG_INFO("Got from sender: \"%s\", sender's rdma_connection address [%p]", (char *)dst_buf_data, */
     /*               rdma_connection); */
 free_send_task:
-    tmp_result = doca_buf_dec_refcount(dst_buf, NULL);
-    if (tmp_result != DOCA_SUCCESS)
+    result = doca_buf_dec_refcount(dst_buf, NULL);
+    if (result != DOCA_SUCCESS)
     {
-        DOCA_LOG_ERR("Failed to decrease dst_buf count: %s", doca_error_get_descr(tmp_result));
-        DOCA_ERROR_PROPAGATE(result, tmp_result);
+        DOCA_LOG_ERR("Failed to decrease dst_buf count: %s", doca_error_get_descr(result));
     }
 free_task:
     doca_task_free(doca_rdma_task_receive_as_task(rdma_receive_task));
-
-    /* Update that an error was encountered, if any */
-    DOCA_ERROR_PROPAGATE(*first_encountered_error, tmp_result);
 
     resources->num_remaining_tasks--;
     /* Stop context once all tasks are completed */

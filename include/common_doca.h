@@ -28,9 +28,10 @@
 
 #include <bits/time.h>
 #include <doca_buf.h>
-#include <doca_dev.h>
 #include <doca_ctx.h>
+#include <doca_dev.h>
 #include <doca_error.h>
+#include <doca_log.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
@@ -315,6 +316,7 @@ extern "C"
     doca_error_t safe_buf_decounter(struct doca_buf *buf);
 
     size_t print_doca_buf_len(struct doca_buf *buf);
+    doca_error_t create_doca_log_backend(struct doca_log_backend **logger, enum doca_log_level level);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

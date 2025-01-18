@@ -1030,6 +1030,116 @@ doca_error_t register_rdma_common_params(void)
     return register_rdma_cm_params();
 }
 
+doca_error_t open_rdma_device_and_pe(const char *dev_name, struct doca_dev **dev, struct doca_pe **pe)
+{
+    doca_error_t result, tmp_result;
+
+    result = open_doca_device_with_ibdev_str(dev_name, doca_rdma_cap_task_receive_is_supported, dev);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to open DOCA device: %s", doca_error_get_descr(result));
+        return result;
+    }
+    result = doca_pe_create(pe);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set permissions to DOCA RDMA: %s", doca_error_get_descr(result));
+        goto error;
+    }
+    return DOCA_SUCCESS;
+error:
+    tmp_result = doca_pe_destroy(*pe);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to destroy DOCA progress engine: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+    tmp_result = doca_dev_close(*dev);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to close DOCA device: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+    return result;
+}
+
+doca_error_t create_two_side_rc_rdma(struct doca_dev *dev, struct doca_pe *pe, struct doca_rdma **rdma,
+                                     struct doca_ctx **ctx, uint32_t gid_index, uint16_t n_conn)
+{
+    doca_error_t result, tmp_result;
+    result = doca_rdma_create(dev, rdma);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create DOCA RDMA: %s", doca_error_get_descr(result));
+        goto destroy_pe;
+    }
+    *ctx = doca_rdma_as_ctx(*rdma);
+    if (*ctx == NULL)
+    {
+        result = DOCA_ERROR_UNEXPECTED;
+        DOCA_LOG_ERR("Failed to convert DOCA RDMA to DOCA context: %s", doca_error_get_descr(result));
+        goto destroy_doca_rdma;
+    }
+    result = doca_rdma_set_permissions(*rdma, DOCA_ACCESS_FLAG_LOCAL_READ_WRITE);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set permissions to DOCA RDMA: %s", doca_error_get_descr(result));
+        goto destroy_doca_rdma;
+    }
+    result = doca_rdma_set_gid_index(*rdma, gid_index);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set gid_index to DOCA RDMA: %s", doca_error_get_descr(result));
+        goto destroy_doca_rdma;
+    }
+    result = doca_rdma_set_max_num_connections(*rdma, n_conn);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set max_num_connections to DOCA RDMA: %s", doca_error_get_descr(result));
+        goto destroy_doca_rdma;
+    }
+
+    /* Set transport type */
+    result = doca_rdma_set_transport_type(*rdma, DOCA_RDMA_TRANSPORT_TYPE_RC);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set RDMA transport type: %s", doca_error_get_descr(result));
+        goto destroy_doca_rdma;
+    }
+
+    result = doca_pe_connect_ctx(pe, *ctx);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Unable to set progress engine for RDMA: %s", doca_error_get_descr(result));
+        goto destroy_doca_rdma;
+    }
+    return result;
+
+destroy_doca_rdma:
+    /* Destroy DOCA RDMA */
+    tmp_result = doca_rdma_destroy(*rdma);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to destroy DOCA RDMA: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+destroy_pe:
+    /* Destroy DOCA progress engine */
+    tmp_result = doca_pe_destroy(pe);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to destroy DOCA progress engine: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+    /* Close DOCA device */
+    tmp_result = doca_dev_close(dev);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to close DOCA device: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+    return result;
+}
 doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mmap_permissions,
                                      const uint32_t rdma_permissions, tasks_check func,
                                      struct rdma_resources *resources, uint32_t m_size, uint16_t n_conn)

@@ -1074,3 +1074,19 @@ size_t print_doca_buf_len(struct doca_buf *buf)
     DOCA_LOG_INFO("buf data len is %zu", len);
     return len;
 }
+
+doca_error_t create_doca_log_backend(struct doca_log_backend **logger, enum doca_log_level level)
+{
+    doca_error_t result;
+    result = doca_log_backend_create_standard();
+    JUMP_ON_DOCA_ERROR(result, error);
+    /* Register a logger backend for internal SDK errors and warnings */
+    result = doca_log_backend_create_with_file_sdk(stderr, logger);
+    JUMP_ON_DOCA_ERROR(result, error);
+    result = doca_log_backend_set_sdk_level(*logger, level);
+    JUMP_ON_DOCA_ERROR(result, error);
+
+    return DOCA_SUCCESS;
+error:
+    return DOCA_ERROR_UNEXPECTED;
+}

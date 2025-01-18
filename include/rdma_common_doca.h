@@ -518,6 +518,9 @@ extern "C"
                                                          struct doca_rdma_connection **connections,
                                                          uint32_t n_connections, int sock_fd);
     doca_error_t allocate_dma_with_rdma_dev(struct rdma_resources *resources, struct dma_cb *cb);
+    doca_error_t create_two_side_rc_rdma(struct doca_dev *dev, struct doca_pe *pe, struct doca_rdma **rdma,
+                                         struct doca_ctx **ctx, uint32_t gid_index, uint16_t n_conn);
+    doca_error_t open_rdma_device_and_pe(const char *dev_name, struct doca_dev **dev, struct doca_pe **pe);
 
 #ifdef __cplusplus
 }
