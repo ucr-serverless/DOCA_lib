@@ -2310,6 +2310,7 @@ doca_error_t submit_recv_task(struct doca_rdma *rdma, struct doca_buf *buf, unio
 {
     doca_error_t result;
 
+    doca_buf_reset_data_len(buf);
     result = doca_rdma_task_receive_allocate_init(rdma, buf, data, task);
     if (result != DOCA_SUCCESS)
     {
