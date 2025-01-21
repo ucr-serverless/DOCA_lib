@@ -438,6 +438,8 @@ extern "C"
     doca_error_t create_local_mmap(struct doca_mmap **mmap, const uint32_t mmap_permissions, void *data_buffer,
                                    size_t data_buffer_size, struct doca_dev *dev);
 
+    doca_error_t create_two_side_mmap_from_local_memory(struct doca_mmap **mmap, void *data_buffer,
+                                                        size_t data_buffer_size, struct doca_dev *dev);
     /*
      * Config callbacks needed for rdma cm connection setup, and config tasks used for negotiation between peers
      *
@@ -518,6 +520,12 @@ extern "C"
                                                          struct doca_rdma_connection **connections,
                                                          uint32_t n_connections, int sock_fd);
     doca_error_t allocate_dma_with_rdma_dev(struct rdma_resources *resources, struct dma_cb *cb);
+    doca_error_t create_two_side_rc_rdma(struct doca_dev *dev, struct doca_pe *pe, struct doca_rdma **rdma,
+                                         struct doca_ctx **ctx, uint32_t gid_index, uint16_t n_conn);
+    doca_error_t open_rdma_device_and_pe(const char *dev_name, struct doca_dev **dev, struct doca_pe **pe);
+    // remember to start the rdma_ctx afterwards
+    doca_error_t init_two_side_rdma_callbacks(struct doca_rdma *rdma, struct doca_ctx *rdma_ctx,
+                                              struct rdma_cb_config *cb_cfg, uint32_t n_task);
 
 #ifdef __cplusplus
 }

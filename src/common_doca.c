@@ -977,7 +977,7 @@ double calculate_timediff_nsec(struct timespec *end, struct timespec *start)
 }
 doca_error_t init_inventory(struct doca_buf_inventory **inv, uint64_t num)
 {
-    doca_error_t result;
+    doca_error_t result, tmp_result;
 
     /* Create DOCA buffer inventory */
     result = doca_buf_inventory_create(num, inv);
@@ -996,18 +996,16 @@ doca_error_t init_inventory(struct doca_buf_inventory **inv, uint64_t num)
     }
     return DOCA_SUCCESS;
 stop_buf_inventory:
-    result = doca_buf_inventory_stop(*inv);
-    if (result != DOCA_SUCCESS)
+    tmp_result = doca_buf_inventory_stop(*inv);
+    if (tmp_result != DOCA_SUCCESS)
     {
-        DOCA_LOG_ERR("Failed to stop DOCA buffer inventory: %s", doca_error_get_descr(result));
-        DOCA_ERROR_PROPAGATE(result, result);
+        DOCA_LOG_ERR("Failed to stop DOCA buffer inventory: %s", doca_error_get_descr(tmp_result));
     }
 destroy_buf_inventory:
-    result = doca_buf_inventory_destroy(*inv);
-    if (result != DOCA_SUCCESS)
+    tmp_result = doca_buf_inventory_destroy(*inv);
+    if (tmp_result != DOCA_SUCCESS)
     {
-        DOCA_LOG_ERR("Failed to destroy DOCA buffer inventory: %s", doca_error_get_descr(result));
-        DOCA_ERROR_PROPAGATE(result, result);
+        DOCA_LOG_ERR("Failed to destroy DOCA buffer inventory: %s", doca_error_get_descr(tmp_result));
     }
     return result;
 }
@@ -1073,4 +1071,20 @@ size_t print_doca_buf_len(struct doca_buf *buf)
     doca_buf_get_data_len(buf, &len);
     DOCA_LOG_INFO("buf data len is %zu", len);
     return len;
+}
+
+doca_error_t create_doca_log_backend(struct doca_log_backend **logger, enum doca_log_level level)
+{
+    doca_error_t result;
+    result = doca_log_backend_create_standard();
+    JUMP_ON_DOCA_ERROR(result, error);
+    /* Register a logger backend for internal SDK errors and warnings */
+    result = doca_log_backend_create_with_file_sdk(stderr, logger);
+    JUMP_ON_DOCA_ERROR(result, error);
+    result = doca_log_backend_set_sdk_level(*logger, level);
+    JUMP_ON_DOCA_ERROR(result, error);
+
+    return DOCA_SUCCESS;
+error:
+    return DOCA_ERROR_UNEXPECTED;
 }
