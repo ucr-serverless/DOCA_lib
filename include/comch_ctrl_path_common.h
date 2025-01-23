@@ -56,6 +56,30 @@ extern "C"
         uint32_t n_thread;
     };
 
+    struct comch_cb_config {
+        /* User specified callback when task completed successfully */
+        doca_comch_task_send_completion_cb_t send_task_comp_cb;
+        /* User specified callback when task completed with error */
+        doca_comch_task_send_completion_cb_t send_task_comp_err_cb;
+        /* User specified callback when a message is received */
+        doca_comch_event_msg_recv_cb_t msg_recv_cb;
+        /* User specified callback when server receives a new connection */
+        doca_comch_event_connection_status_changed_cb_t server_connection_event_cb;
+        /* User specified callback when server finds a disconnected connection */
+        doca_comch_event_connection_status_changed_cb_t server_disconnection_event_cb;
+        /* Whether need to configure data_path related event callback */
+        bool data_path_mode;
+        /* User specified callback when a new consumer registered */
+        doca_comch_event_consumer_cb_t new_consumer_cb;
+        /* User specified callback when a consumer expired event occurs */
+        doca_comch_event_consumer_cb_t expired_consumer_cb;
+        /* User specified context data */
+        void *ctx_user_data;
+        /* User specified PE context state changed event callback */
+        doca_ctx_state_changed_callback_t ctx_state_changed_cb;
+
+    };
+
     struct comch_ctrl_path_client_cb_config
     {
         /* User specified callback when task completed successfully */
