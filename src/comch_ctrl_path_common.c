@@ -511,6 +511,123 @@ void clean_comch_ctrl_path_client(struct doca_comch_client *client, struct doca_
     }
 }
 
+doca_error_t init_comch_client(const char *server_name, struct doca_dev *hw_dev, struct comch_cb_config *cb_cfg,
+                               struct doca_comch_client **client, struct doca_pe **pe, struct doca_ctx **out_ctx)
+{
+    doca_error_t result;
+    struct doca_ctx *ctx;
+    union doca_data user_data;
+    uint32_t max_msg_size;
+
+    result = doca_pe_create(pe);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed creating pe with error = %s", doca_error_get_name(result));
+        return result;
+    }
+
+    result = doca_comch_client_create(hw_dev, server_name, client);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create client with error = %s", doca_error_get_name(result));
+        goto destroy_pe;
+    }
+
+    ctx = doca_comch_client_as_ctx(*client);
+
+    result = doca_pe_connect_ctx(*pe, ctx);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed adding pe context to client with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+
+    result = doca_ctx_set_state_changed_cb(ctx, cb_cfg->ctx_state_changed_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed setting state change callback with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+
+    result = doca_comch_client_task_send_set_conf(*client, cb_cfg->send_task_comp_cb, cb_cfg->send_task_comp_err_cb,
+                                                  CC_SEND_TASK_NUM);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed setting send task cbs with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+
+    result = doca_comch_client_event_msg_recv_register(*client, cb_cfg->msg_recv_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed adding message recv event cb with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+
+    /* Config the data path related events */
+    if (cb_cfg->data_path_mode == true)
+    {
+        result =
+            doca_comch_client_event_consumer_register(*client, cb_cfg->new_consumer_cb, cb_cfg->expired_consumer_cb);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed adding consumer event cb with error = %s", doca_error_get_name(result));
+            goto destroy_client;
+        }
+    }
+
+    /* Set client properties */
+
+    result = doca_comch_cap_get_max_msg_size(doca_dev_as_devinfo(hw_dev), &max_msg_size);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to get max message size with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+
+    result = doca_comch_client_set_max_msg_size(*client, max_msg_size);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set msg size property with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+
+    result = doca_comch_client_set_recv_queue_size(*client, CC_REC_QUEUE_SIZE);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set msg size property with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+    // set the user_data in cb_cfg to be the ctx user data
+
+    user_data.ptr = cb_cfg->ctx_user_data;
+    result = doca_ctx_set_user_data(ctx, user_data);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set ctx user data with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+
+    /* Client is not started until connection is finished, so getting connection in progress */
+    result = doca_ctx_start(ctx);
+    if (result != DOCA_ERROR_IN_PROGRESS)
+    {
+        DOCA_LOG_ERR("Failed to start client context with error = %s", doca_error_get_name(result));
+        goto destroy_client;
+    }
+
+    *out_ctx = ctx;
+
+    return DOCA_SUCCESS;
+
+destroy_client:
+    doca_comch_client_destroy(*client);
+    *client = NULL;
+destroy_pe:
+    doca_pe_destroy(*pe);
+    *pe = NULL;
+    return result;
+}
 static doca_error_t inner_init_comch_ctrl_path_client(const char *server_name, struct doca_dev *hw_dev,
                                                       struct comch_ctrl_path_client_cb_config *cb_cfg,
                                                       struct doca_comch_client **client, struct doca_pe **pe,
@@ -666,6 +783,130 @@ void clean_comch_ctrl_path_server(struct doca_comch_server *server, struct doca_
     }
 }
 
+doca_error_t init_comch_server(const char *server_name, struct doca_dev *hw_dev, struct doca_dev_rep *rep_dev,
+                               struct comch_cb_config *cb_cfg, struct doca_comch_server **server, struct doca_pe **pe,
+                               struct doca_ctx **out_ctx)
+{
+    doca_error_t result;
+    union doca_data user_data;
+    struct doca_ctx *ctx;
+    uint32_t max_msg_size;
+
+    result = doca_pe_create(pe);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed creating pe with error = %s", doca_error_get_name(result));
+        return result;
+    }
+
+    result = doca_comch_server_create(hw_dev, rep_dev, server_name, server);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to create server with error = %s", doca_error_get_name(result));
+        goto destroy_pe;
+    }
+
+    ctx = doca_comch_server_as_ctx(*server);
+
+    result = doca_pe_connect_ctx(*pe, ctx);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed adding pe context to server with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    result = doca_ctx_set_state_changed_cb(ctx, cb_cfg->ctx_state_changed_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed setting state change callback with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    result = doca_comch_server_task_send_set_conf(*server, cb_cfg->send_task_comp_cb, cb_cfg->send_task_comp_err_cb,
+                                                  CC_SEND_TASK_NUM);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed setting send task cbs with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    result = doca_comch_server_event_msg_recv_register(*server, cb_cfg->msg_recv_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed adding message recv event cb with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    result = doca_comch_server_event_connection_status_changed_register(*server, cb_cfg->server_connection_event_cb,
+                                                                        cb_cfg->server_disconnection_event_cb);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed adding connection event cbs with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    /* Config the data_path related events */
+    if (cb_cfg->data_path_mode == true)
+    {
+        result =
+            doca_comch_server_event_consumer_register(*server, cb_cfg->new_consumer_cb, cb_cfg->expired_consumer_cb);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed adding consumer event cb with error = %s", doca_error_get_name(result));
+            goto destroy_server;
+        }
+    }
+
+    /* Set server properties */
+
+    result = doca_comch_cap_get_max_msg_size(doca_dev_as_devinfo(hw_dev), &max_msg_size);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to get max message size with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    result = doca_comch_server_set_max_msg_size(*server, max_msg_size);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set msg size property with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    result = doca_comch_server_set_recv_queue_size(*server, CC_REC_QUEUE_SIZE);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set msg size property with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    user_data.ptr = cb_cfg->ctx_user_data;
+    result = doca_ctx_set_user_data(ctx, user_data);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to set ctx user data with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    result = doca_ctx_start(ctx);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to start server context with error = %s", doca_error_get_name(result));
+        goto destroy_server;
+    }
+
+    *out_ctx = ctx;
+
+    return DOCA_SUCCESS;
+
+destroy_server:
+    doca_comch_server_destroy(*server);
+    *server = NULL;
+destroy_pe:
+    doca_pe_destroy(*pe);
+    *pe = NULL;
+    return result;
+}
 static doca_error_t inner_init_comch_ctrl_path_server(const char *server_name, struct doca_dev *hw_dev,
                                                       struct doca_dev_rep *rep_dev,
                                                       struct comch_ctrl_path_server_cb_config *cb_cfg,

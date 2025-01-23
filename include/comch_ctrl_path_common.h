@@ -56,7 +56,8 @@ extern "C"
         uint32_t n_thread;
     };
 
-    struct comch_cb_config {
+    struct comch_cb_config
+    {
         /* User specified callback when task completed successfully */
         doca_comch_task_send_completion_cb_t send_task_comp_cb;
         /* User specified callback when task completed with error */
@@ -77,7 +78,6 @@ extern "C"
         void *ctx_user_data;
         /* User specified PE context state changed event callback */
         doca_ctx_state_changed_callback_t ctx_state_changed_cb;
-
     };
 
     struct comch_ctrl_path_client_cb_config
@@ -205,6 +205,12 @@ extern "C"
     doca_error_t comch_client_send_msg(struct doca_comch_client *comch_client, struct doca_comch_connection *peer,
                                        const void *msg, uint32_t len, union doca_data user_data,
                                        struct doca_comch_task_send **task);
+    doca_error_t init_comch_client(const char *server_name, struct doca_dev *hw_dev, struct comch_cb_config *cb_cfg,
+                                   struct doca_comch_client **client, struct doca_pe **pe, struct doca_ctx **out_ctx);
+
+    doca_error_t init_comch_server(const char *server_name, struct doca_dev *hw_dev, struct doca_dev_rep *rep_dev,
+                                   struct comch_cb_config *cb_cfg, struct doca_comch_server **server,
+                                   struct doca_pe **pe, struct doca_ctx **out_ctx);
 #ifdef __cplusplus
 }
 #endif
