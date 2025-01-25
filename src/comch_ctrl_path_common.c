@@ -600,7 +600,7 @@ doca_error_t init_comch_client(const char *server_name, struct doca_dev *hw_dev,
     }
     // set the user_data in cb_cfg to be the ctx user data
 
-    user_data.ptr = cb_cfg->ctx_user_data;
+    user_data.u64 = (uint64_t)cb_cfg->ctx_user_data;
     result = doca_ctx_set_user_data(ctx, user_data);
     if (result != DOCA_SUCCESS)
     {
@@ -880,7 +880,7 @@ doca_error_t init_comch_server(const char *server_name, struct doca_dev *hw_dev,
         goto destroy_server;
     }
 
-    user_data.ptr = cb_cfg->ctx_user_data;
+    user_data.u64 = (uint64_t)cb_cfg->ctx_user_data;
     result = doca_ctx_set_user_data(ctx, user_data);
     if (result != DOCA_SUCCESS)
     {
