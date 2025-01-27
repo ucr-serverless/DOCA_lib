@@ -202,9 +202,18 @@ extern "C"
     doca_error_t comch_server_send_msg(struct doca_comch_server *comch_server, struct doca_comch_connection *peer,
                                        const void *msg, uint32_t len, union doca_data user_data,
                                        struct doca_comch_task_send **task);
+
+doca_error_t comch_server_send_msg_retry(struct doca_comch_server *comch_server, struct doca_comch_connection *peer,
+                                   const void *msg, uint32_t len, union doca_data user_data,
+                                   struct doca_comch_task_send **task);
+
     doca_error_t comch_client_send_msg(struct doca_comch_client *comch_client, struct doca_comch_connection *peer,
                                        const void *msg, uint32_t len, union doca_data user_data,
                                        struct doca_comch_task_send **task);
+
+doca_error_t comch_client_send_msg_retry(struct doca_comch_client *comch_client, struct doca_comch_connection *peer,
+                                   const void *msg, uint32_t len, union doca_data user_data,
+                                   struct doca_comch_task_send **task);
     doca_error_t init_comch_client(const char *server_name, struct doca_dev *hw_dev, struct comch_cb_config *cb_cfg,
                                    struct doca_comch_client **client, struct doca_pe **pe, struct doca_ctx **out_ctx);
 
