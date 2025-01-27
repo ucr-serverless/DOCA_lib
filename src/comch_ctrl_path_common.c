@@ -51,6 +51,7 @@ void basic_send_task_completion_callback(struct doca_comch_task_send *task, unio
     (void)ctx_user_data;
     /* This argument is not in use */
     (void)task_user_data;
+    DOCA_LOG_INFO("comp callback");
 
     doca_task_free(doca_comch_task_send_as_task(task));
 }
@@ -62,6 +63,7 @@ void basic_send_task_completion_err_callback(struct doca_comch_task_send *task, 
     (void)ctx_user_data;
     /* This argument is not in use */
     (void)task_user_data;
+    DOCA_LOG_INFO("err callback");
 
     doca_task_free(doca_comch_task_send_as_task(task));
 }
