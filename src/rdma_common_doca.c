@@ -2333,6 +2333,43 @@ free_task:
     doca_task_free(doca_rdma_task_receive_as_task(*task));
     return result;
 }
+doca_error_t submit_recv_task_ignore_bad_state(struct doca_rdma *rdma, struct doca_buf *buf, union doca_data data,
+                              struct doca_rdma_task_receive **task)
+{
+    doca_error_t result;
+
+    doca_buf_reset_data_len(buf);
+
+    do {
+
+        result = doca_rdma_task_receive_allocate_init(rdma, buf, data, task);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+            return result;
+        }
+        /* Submit RDMA receive task */
+        // DOCA_LOG_INFO("Submitting RDMA send imm task");
+        struct doca_task* t_obj = doca_rdma_task_receive_as_task(*task);
+        result = doca_task_submit(t_obj);
+        if (result == DOCA_ERROR_BAD_STATE) {
+            doca_task_free(t_obj);
+        } else if (result == DOCA_SUCCESS) {
+            return DOCA_SUCCESS;
+        } else {
+            goto error;
+
+        }
+
+    // DOCA_LOG_INFO("RDMA send imm task successfully submitted");
+    } while(result != DOCA_SUCCESS);
+
+
+    return DOCA_SUCCESS;
+error:
+    doca_task_free(doca_rdma_task_receive_as_task(*task));
+    return result;
+}
 doca_error_t submit_recv_task_retry(struct doca_rdma *rdma, struct doca_buf *buf, union doca_data data,
                                     struct doca_rdma_task_receive **task)
 {
@@ -2387,6 +2424,43 @@ free_task:
     return result;
 }
 
+doca_error_t submit_send_imm_task_ignore_bad_state(struct doca_rdma *rdma, struct doca_rdma_connection *connection, struct doca_buf *buf,
+                                  uint32_t imme, union doca_data task_data, struct doca_rdma_task_send_imm **task)
+{
+    doca_error_t result;
+    // convert to big endiane
+    doca_be32_t imm = htonl(imme);
+
+    do {
+
+        result = doca_rdma_task_send_imm_allocate_init(rdma, connection, buf, imm, task_data, task);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+            return result;
+        }
+
+        /* Submit RDMA receive task */
+        // DOCA_LOG_INFO("Submitting RDMA send imm task");
+        struct doca_task* t_obj = doca_rdma_task_send_imm_as_task(*task);
+        result = doca_task_submit(t_obj);
+        if (result == DOCA_ERROR_BAD_STATE) {
+            doca_task_free(t_obj);
+        } else if (result == DOCA_SUCCESS) {
+            return DOCA_SUCCESS;
+        } else {
+            goto error;
+
+        }
+
+    // DOCA_LOG_INFO("RDMA send imm task successfully submitted");
+    } while(result != DOCA_SUCCESS);
+
+    return DOCA_SUCCESS;
+error:
+    doca_task_free(doca_rdma_task_send_imm_as_task(*task));
+    return result;
+}
 doca_error_t submit_send_imm_task_retry(struct doca_rdma *rdma, struct doca_rdma_connection *connection,
                                         struct doca_buf *buf, uint32_t imme, union doca_data task_data,
                                         struct doca_rdma_task_send_imm **task)
