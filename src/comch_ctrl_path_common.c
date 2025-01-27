@@ -139,6 +139,8 @@ doca_error_t comch_server_send_msg_retry(struct doca_comch_server *comch_server,
         result = doca_task_submit(task_obj);
         if (result == DOCA_ERROR_BAD_STATE) {
             doca_task_free(task_obj);
+        } else if (result != DOCA_SUCCESS) {
+            DOCA_LOG_ERR("Failed to submit task in server with error = %s", doca_error_get_name(result));
         }
     } while(result != DOCA_SUCCESS);
 
@@ -209,7 +211,10 @@ doca_error_t comch_client_send_msg_retry(struct doca_comch_client *comch_client,
         result = doca_task_submit(task_obj);
         if (result == DOCA_ERROR_BAD_STATE) {
             doca_task_free(task_obj);
+        } else if (result != DOCA_SUCCESS) {
+            DOCA_LOG_ERR("Failed to submit task in server with error = %s", doca_error_get_name(result));
         }
+
     } while(result != DOCA_SUCCESS);
 
     return DOCA_SUCCESS;
