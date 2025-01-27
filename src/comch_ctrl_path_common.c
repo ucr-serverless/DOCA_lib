@@ -115,32 +115,34 @@ doca_error_t comch_server_send_msg_retry(struct doca_comch_server *comch_server,
     doca_error_t result;
 
     /* This function will only be called after a message was received, so connection should be available */
-    if (peer == NULL)
-    {
-        DOCA_LOG_ERR("Failed to send response: no connection available");
-        return DOCA_ERROR_NOT_CONNECTED;
-    }
+    do {
 
-    result = doca_comch_server_task_send_alloc_init(comch_server, peer, msg, len, task);
-    if (result != DOCA_SUCCESS)
-    {
-        DOCA_LOG_ERR("Failed to allocate task in server with error = %s", doca_error_get_name(result));
-        return result;
-    }
+        if (peer == NULL)
+        {
+            DOCA_LOG_ERR("Failed to send response: no connection available");
+            return DOCA_ERROR_NOT_CONNECTED;
+        }
 
-    task_obj = doca_comch_task_send_as_task(*task);
+        result = doca_comch_server_task_send_alloc_init(comch_server, peer, msg, len, task);
+        if (result != DOCA_SUCCESS)
+        {
+            DOCA_LOG_ERR("Failed to allocate task in server with error = %s", doca_error_get_name(result));
+            return result;
+        }
 
-    doca_task_set_user_data(task_obj, user_data);
+        task_obj = doca_comch_task_send_as_task(*task);
 
-    result = doca_task_submit(task_obj);
-    while (result != DOCA_SUCCESS)
-    {
+        doca_task_set_user_data(task_obj, user_data);
+
         result = doca_task_submit(task_obj);
-        DOCA_LOG_WARN("Failed submitting send task with error = %s", doca_error_get_name(result));
-    }
+        if (result == DOCA_ERROR_BAD_STATE) {
+            doca_task_free(task_obj);
+        }
+    } while(result != DOCA_SUCCESS);
 
     return DOCA_SUCCESS;
 }
+
 doca_error_t comch_client_send_msg(struct doca_comch_client *comch_client, struct doca_comch_connection *peer,
                                    const void *msg, uint32_t len, union doca_data user_data,
                                    struct doca_comch_task_send **task)
