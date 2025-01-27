@@ -1031,6 +1031,28 @@ doca_error_t register_rdma_common_params(void)
     return register_rdma_cm_params();
 }
 
+doca_error_t open_rdma_device(const char *dev_name, struct doca_dev **dev)
+{
+    doca_error_t result, tmp_result;
+
+    result = open_doca_device_with_ibdev_str(dev_name, doca_rdma_cap_task_receive_is_supported, dev);
+    if (result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to open DOCA device: %s", doca_error_get_descr(result));
+        goto error;
+    }
+    return DOCA_SUCCESS;
+
+error:
+    tmp_result = doca_dev_close(*dev);
+    if (tmp_result != DOCA_SUCCESS)
+    {
+        DOCA_LOG_ERR("Failed to close DOCA device: %s", doca_error_get_descr(tmp_result));
+        DOCA_ERROR_PROPAGATE(result, tmp_result);
+    }
+    return result;
+}
+
 doca_error_t open_rdma_device_and_pe(const char *dev_name, struct doca_dev **dev, struct doca_pe **pe)
 {
     doca_error_t result, tmp_result;

@@ -527,6 +527,7 @@ doca_error_t submit_send_imm_task_ignore_bad_state(struct doca_rdma *rdma, struc
     doca_error_t allocate_dma_with_rdma_dev(struct rdma_resources *resources, struct dma_cb *cb);
     doca_error_t create_two_side_rc_rdma(struct doca_dev *dev, struct doca_pe *pe, struct doca_rdma **rdma,
                                          struct doca_ctx **ctx, uint32_t gid_index, uint16_t n_conn);
+doca_error_t open_rdma_device(const char *dev_name, struct doca_dev **dev);
     doca_error_t open_rdma_device_and_pe(const char *dev_name, struct doca_dev **dev, struct doca_pe **pe);
     // remember to start the rdma_ctx afterwards
     doca_error_t init_two_side_rdma_callbacks(struct doca_rdma *rdma, struct doca_ctx *rdma_ctx,
