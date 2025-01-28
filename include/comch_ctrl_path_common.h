@@ -56,6 +56,30 @@ extern "C"
         uint32_t n_thread;
     };
 
+    struct comch_cb_config
+    {
+        /* User specified callback when task completed successfully */
+        doca_comch_task_send_completion_cb_t send_task_comp_cb;
+        /* User specified callback when task completed with error */
+        doca_comch_task_send_completion_cb_t send_task_comp_err_cb;
+        /* User specified callback when a message is received */
+        doca_comch_event_msg_recv_cb_t msg_recv_cb;
+        /* User specified callback when server receives a new connection */
+        doca_comch_event_connection_status_changed_cb_t server_connection_event_cb;
+        /* User specified callback when server finds a disconnected connection */
+        doca_comch_event_connection_status_changed_cb_t server_disconnection_event_cb;
+        /* Whether need to configure data_path related event callback */
+        bool data_path_mode;
+        /* User specified callback when a new consumer registered */
+        doca_comch_event_consumer_cb_t new_consumer_cb;
+        /* User specified callback when a consumer expired event occurs */
+        doca_comch_event_consumer_cb_t expired_consumer_cb;
+        /* User specified context data */
+        void *ctx_user_data;
+        /* User specified PE context state changed event callback */
+        doca_ctx_state_changed_callback_t ctx_state_changed_cb;
+    };
+
     struct comch_ctrl_path_client_cb_config
     {
         /* User specified callback when task completed successfully */
@@ -178,9 +202,24 @@ extern "C"
     doca_error_t comch_server_send_msg(struct doca_comch_server *comch_server, struct doca_comch_connection *peer,
                                        const void *msg, uint32_t len, union doca_data user_data,
                                        struct doca_comch_task_send **task);
+
+doca_error_t comch_server_send_msg_retry(struct doca_comch_server *comch_server, struct doca_comch_connection *peer,
+                                   const void *msg, uint32_t len, union doca_data user_data,
+                                   struct doca_comch_task_send **task);
+
     doca_error_t comch_client_send_msg(struct doca_comch_client *comch_client, struct doca_comch_connection *peer,
                                        const void *msg, uint32_t len, union doca_data user_data,
                                        struct doca_comch_task_send **task);
+
+doca_error_t comch_client_send_msg_retry(struct doca_comch_client *comch_client, struct doca_comch_connection *peer,
+                                   const void *msg, uint32_t len, union doca_data user_data,
+                                   struct doca_comch_task_send **task);
+    doca_error_t init_comch_client(const char *server_name, struct doca_dev *hw_dev, struct comch_cb_config *cb_cfg,
+                                   struct doca_comch_client **client, struct doca_pe **pe, struct doca_ctx **out_ctx);
+
+    doca_error_t init_comch_server(const char *server_name, struct doca_dev *hw_dev, struct doca_dev_rep *rep_dev,
+                                   struct comch_cb_config *cb_cfg, struct doca_comch_server **server,
+                                   struct doca_pe **pe, struct doca_ctx **out_ctx);
 #ifdef __cplusplus
 }
 #endif
