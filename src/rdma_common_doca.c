@@ -2458,7 +2458,7 @@ doca_error_t submit_send_imm_task_ignore_bad_state(struct doca_rdma *rdma, struc
         result = doca_rdma_task_send_imm_allocate_init(rdma, connection, buf, imm, task_data, task);
         if (result != DOCA_SUCCESS)
         {
-            DOCA_LOG_ERR("Failed to allocate RDMA receive task : %s", doca_error_get_descr(result));
+            DOCA_LOG_ERR("Failed to allocate RDMA send task : %s", doca_error_get_descr(result));
             return result;
         }
 
@@ -2471,6 +2471,7 @@ doca_error_t submit_send_imm_task_ignore_bad_state(struct doca_rdma *rdma, struc
         } else if (result == DOCA_SUCCESS) {
             return DOCA_SUCCESS;
         } else {
+            DOCA_LOG_ERR("Failed to submit RDMA send task : %s", doca_error_get_descr(result));
             goto error;
 
         }
