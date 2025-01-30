@@ -2466,21 +2466,18 @@ doca_error_t submit_send_imm_task_ignore_bad_state(struct doca_rdma *rdma, struc
         // DOCA_LOG_INFO("Submitting RDMA send imm task");
         struct doca_task* t_obj = doca_rdma_task_send_imm_as_task(*task);
         result = doca_task_submit(t_obj);
-        if (result == DOCA_ERROR_BAD_STATE) {
-            doca_task_free(t_obj);
-        } else if (result == DOCA_SUCCESS) {
+        if (result == DOCA_SUCCESS) {
             return DOCA_SUCCESS;
-        } else {
+        }
+        else {
             DOCA_LOG_ERR("Failed to submit RDMA send task : %s", doca_error_get_descr(result));
-            goto error;
+            doca_task_free(t_obj);
 
         }
 
     // DOCA_LOG_INFO("RDMA send imm task successfully submitted");
     } while(result != DOCA_SUCCESS);
 
-    return DOCA_SUCCESS;
-error:
     doca_task_free(doca_rdma_task_send_imm_as_task(*task));
     return result;
 }
