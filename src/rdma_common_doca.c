@@ -1032,7 +1032,7 @@ doca_error_t register_rdma_common_params(void)
 
 doca_error_t allocate_rdma_resources(struct rdma_config *cfg, const uint32_t mmap_permissions,
                                      const uint32_t rdma_permissions, tasks_check func,
-                                     struct rdma_resources *resources, uint32_t m_size, uint16_t n_conn)
+                                     struct rdma_resources *resources, uint64_t m_size, uint16_t n_conn)
 {
     doca_error_t result, tmp_result;
 
